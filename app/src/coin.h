@@ -52,6 +52,11 @@ extern "C" {
 #define APPVERSION_LINE1 "Kadena"
 #define APPVERSION_LINE2 "v" APPVERSION
 
+typedef enum {
+    tx_json = 0,
+    tx_textual
+} tx_type_e;
+
 #ifdef __cplusplus
 }
 #endif

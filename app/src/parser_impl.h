@@ -25,8 +25,17 @@
 extern "C" {
 #endif
 
-// #{TODO} --> functions to parse, get, process transaction fields
-parser_error_t _read(parser_context_t *c, parser_tx_t *v);
+
+typedef struct {
+    const uint8_t *buffer;
+    uint16_t bufferLen;
+    uint16_t offset;
+    parser_tx_t *tx_obj;
+} parser_context_t;
+
+parser_error_t _read_json_tx(parser_context_t *c, parser_tx_t *v);
+parser_error_t parser_getJsonValueAsString(const char *key_name, char *outVal, uint16_t *outValLen);
+parser_error_t parser_getTransactionParams(uint8_t index, char *amount, uint16_t *amount_size, char *from, uint16_t *from_size, char *to, uint16_t *to_size);
 
 #ifdef __cplusplus
 }

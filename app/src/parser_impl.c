@@ -16,14 +16,65 @@
 
 #include "parser_impl.h"
 
-parser_error_t _read(parser_context_t *c, parser_tx_t *v) {
-    if (c == NULL || v == NULL) {
-        return parser_unexpected_error;
-    }
+parser_tx_t parser_tx_obj;
 
-    // TODO: implement parser
-    v->generic_tx.len = c->bufferLen;
-    v->generic_tx.ptr = c->buffer;
+parser_error_t _read_json_tx(parser_context_t *c, __Z_UNUSED parser_tx_t *v) {
+    CHECK_ERROR(json_parse(&parser_tx_obj.tx_json.json, (const char *) c->buffer,
+                           c->bufferLen));
+
+    parser_tx_obj.tx_json.tx = (const char *) c->buffer;
+    parser_tx_obj.tx_json.flags.cache_valid = 0;
+    parser_tx_obj.tx_json.filter_msg_type_count = 0;
+    parser_tx_obj.tx_json.filter_msg_from_count = 0;
+
+    return parser_ok;
+}
+
+
+parser_error_t parser_getJsonValueAsString(const char *key_name, char *outVal, uint16_t *outValLen) {
+    uint16_t token_index = 0;
+
+    // Search token_index to access the parsed JSON object
+    object_get_value(&parser_tx_obj.tx_json.json, 0, key_name, &token_index);
+
+    *outValLen = (parser_tx_obj.tx_json.json.tokens[token_index].end - parser_tx_obj.tx_json.json.tokens[token_index].start);
+    strncpy(outVal, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[token_index].start, *outValLen);
+
+    return parser_ok;
+}
+
+parser_error_t parser_getTransactionParams(uint8_t tx_index, char *amount, uint16_t *amount_size, char *from, uint16_t *from_size, char *to, uint16_t *to_size) {
+    parsed_json_t json_clist;
+    parsed_json_t json_tx;
+    parsed_json_t json_args;
+    uint16_t token_index = 0;
+
+    object_get_value(&parser_tx_obj.tx_json.json, 0, "clist", &token_index);
+
+    json_parse(&json_clist, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[token_index].start, parser_tx_obj.tx_json.json.tokens[token_index].end - parser_tx_obj.tx_json.json.tokens[token_index].start);
+    
+    array_get_nth_element(&json_clist, 0, 0, &token_index);
+
+    json_parse(&json_tx, json_clist.buffer + json_clist.tokens[token_index].start, json_clist.tokens[token_index].end - json_clist.tokens[token_index].start);
+
+    object_get_value(&json_tx, 0, "args", &token_index);
+
+    json_parse(&json_args, json_tx.buffer + json_tx.tokens[token_index].start, json_tx.tokens[token_index].end - json_tx.tokens[token_index].start);
+
+    array_get_nth_element(&json_args, 0, 0, &token_index);
+    strncpy(from, json_args.buffer + json_args.tokens[token_index].start, json_args.tokens[token_index].end - json_args.tokens[token_index].start);
+    *from_size = json_args.tokens[token_index].end - json_args.tokens[token_index].start;
+    from[*from_size] = '\0';
+
+    array_get_nth_element(&json_args, 0, 1, &token_index);
+    strncpy(to, json_args.buffer + json_args.tokens[token_index].start, json_args.tokens[token_index].end - json_args.tokens[token_index].start);
+    *to_size = json_args.tokens[token_index].end - json_args.tokens[token_index].start;
+    to[*to_size] = '\0';
+
+    array_get_nth_element(&json_args, 0, 2, &token_index);
+    strncpy(amount, json_args.buffer + json_args.tokens[token_index].start, json_args.tokens[token_index].end - json_args.tokens[token_index].start);
+    *amount_size = json_args.tokens[token_index].end - json_args.tokens[token_index].start;
+    amount[*amount_size] = '\0';
 
     return parser_ok;
 }
