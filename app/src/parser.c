@@ -14,17 +14,17 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include "parser.h"
-
 #include <stdio.h>
 #include <zxformat.h>
 #include <zxmacros.h>
 #include <zxtypes.h>
 
+#include "items.h"
 #include "coin.h"
 #include "crypto.h"
 #include "crypto_helper.h"
 #include "parser_impl.h"
+#include "parser.h"
 
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
     ctx->offset = 0;
@@ -47,8 +47,8 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
 
     CHECK_ERROR(_read_json_tx(ctx, tx_obj));
 
-    CHECK_ERROR(parser_initItems());
-    CHECK_ERROR(parser_storeItems(ctx));
+    items_initItems();
+    items_storeItems(ctx);
 
     return parser_ok;
 }
@@ -76,8 +76,7 @@ parser_error_t parser_getNumItems(const parser_context_t *ctx, uint8_t *num_item
         return parser_tx_obj_empty;
     }
 
-    *num_items = 0;
-    parser_getTotalItems(num_items);
+    *num_items = items_getTotalItems();
 
     return parser_ok;
 }
@@ -100,7 +99,7 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
                               char *outVal, uint16_t outValLen, uint8_t pageIdx, uint8_t *pageCount) {
     *pageCount = 1;
     uint8_t numItems = 0;
-    item_array_t *item_array = parser_getItemArray();
+    item_array_t *item_array = items_getItemArray();
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
     CHECK_APP_CANARY()
 
@@ -108,7 +107,7 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
 
     snprintf(outKey, outKeyLen, item_array->items[displayIdx].key);
-    item_array->items[displayIdx].toString(item_array->items[displayIdx].buf, item_array->items[displayIdx].len, outVal, &outValLen);
+    item_array->items[displayIdx].toString(item_array->items[displayIdx].json, outVal, &outValLen);
 
     return parser_ok;
 }

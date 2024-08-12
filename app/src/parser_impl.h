@@ -25,6 +25,14 @@
 extern "C" {
 #endif
 
+#define JSON_NETWORK_ID     "networkId"
+#define JSON_META           "meta"
+#define JSON_SENDER         "sender"
+#define JSON_CHAIN_ID       "chainId"
+#define JSON_GAS_LIMIT      "gasLimit"
+#define JSON_GAS_PRICE      "gasPrice"
+#define JSON_SIGNERS        "signers"
+#define JSON_CLIST          "clist"
 
 typedef struct {
     const uint8_t *buffer;
@@ -33,33 +41,20 @@ typedef struct {
     parser_tx_t *tx_obj;
 } parser_context_t;
 
-typedef struct {
-    char key[20];
-    char *buf;
-    uint16_t len;
-    parser_error_t (*toString)(char *inBuf, uint16_t inBufLen, char *outVal, uint16_t *outValLen);
-} item_t;
-
-typedef struct {
-    item_t items[20];
-    uint8_t numOfItems;
-} item_array_t;
-
 parser_error_t _read_json_tx(parser_context_t *c, parser_tx_t *v);
-parser_error_t parser_initItems();
-parser_error_t parser_storeItems(parser_context_t *ctx);
-parser_error_t parser_getTotalItems(uint8_t *num_items);
-parser_error_t parser_getJsonValueBuffer(parsed_json_t json_obj, const char *key_name, char **outVal, uint16_t *outValLen);
+parser_tx_t *parser_getParserTxObj();
 parser_error_t parser_initClistObject();
 parser_error_t parser_initTransfer();
-parser_error_t parser_getNthClistObject(parsed_json_t *json_obj, uint8_t clist_array_idx);
 parser_error_t parser_isTransfer(parsed_json_t *json_obj);
 parser_error_t parser_getTransferFrom(char **from, uint16_t *from_len);
 parser_error_t parser_getTransferTo(char **to, uint16_t *to_len);
 parser_error_t parser_getTransferAmount(char **amount, uint16_t *amount_len);
-uint16_t parser_getNumberOfPossibleTransfers();
+uint16_t parser_getNumberOfClistElements();
 uint16_t parser_getNumberOfTransfers();
-item_array_t *parser_getItemArray();
+parser_error_t parser_getJsonValue(parsed_json_t *json_obj, const char *key);
+parser_error_t parser_getNthClistElement(parsed_json_t *json_obj, uint8_t clist_array_idx);
+parser_error_t parser_getGasObject(parsed_json_t *json_obj);
+parser_error_t parser_getChainId(parsed_json_t *json_obj);
 
 #ifdef __cplusplus
 }
