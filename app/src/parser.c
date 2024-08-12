@@ -106,7 +106,7 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     CHECK_ERROR(checkSanity(numItems, displayIdx))
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
 
-    snprintf(outKey, outKeyLen, item_array->items[displayIdx].key);
+    snprintf(outKey, outKeyLen, "%s", item_array->items[displayIdx].key);
     item_array->items[displayIdx].toString(item_array->items[displayIdx].json, outVal, &outValLen);
 
     return parser_ok;

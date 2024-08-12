@@ -36,7 +36,7 @@ parsed_json_t signing_json;
 parsed_json_t requiring_json;
 
 uint8_t hash[BLAKE2B_HASH_SIZE] = {0};
-uint8_t base64_hash[44];
+char base64_hash[44];
 
 void items_initItems() {
     MEMZERO(&item_array, sizeof(item_array_t));
@@ -51,7 +51,6 @@ item_array_t *items_getItemArray() {
 void items_storeItems() {
     parsed_json_t json_clist;
     parsed_json_t json_possible_transfer;
-    parsed_json_t parsed_json_all = parser_getParserTxObj()->tx_json.json;
     uint8_t items_idx = 0;
     uint8_t unknown_capabitilies = 1;
     uint8_t num_of_transfers = 1;
@@ -142,16 +141,16 @@ void items_storeItems() {
     item_array.items[items_idx].toString = items_stdToDisplayString;
     items_idx++;
 
-    strcpy(item_array.items[items_idx].key, "Sign for Address");
     /*
+    strcpy(item_array.items[items_idx].key, "Sign for Address");
     Currently launching cpp tests, so this is not available
     uint8_t address[32];
     uint16_t address_size;
     CHECK_ERROR(crypto_fillAddress(address, sizeof(address), &address_size));
     snprintf(outVal, address_size + 1, "%s", address);
-    */
     item_array.items[items_idx].toString = items_stdToDisplayString;
     items_idx++;
+    */
 
     item_array.numOfItems = items_idx;
 }
@@ -206,19 +205,19 @@ static void items_storeTransferItem(parsed_json_t *json_possible_transfer, uint8
     }
 }
 
-static parser_error_t items_stdToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_stdToDisplayString(__Z_UNUSED parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
     *outValLen = json_obj.bufferLen + 1;
     snprintf(outVal, *outValLen, "%s", json_obj.buffer);
     return parser_ok;
 }
 
-static parser_error_t items_signingToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_signingToDisplayString(__Z_UNUSED parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
     *outValLen = sizeof("Transaction");
     snprintf(outVal, *outValLen, "Transaction");
     return parser_ok;
 }
 
-static parser_error_t items_requiringToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_requiringToDisplayString(__Z_UNUSED parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
     *outValLen = sizeof("Capabilities");
     snprintf(outVal, *outValLen, "Capabilities");
     return parser_ok;
@@ -258,12 +257,11 @@ static parser_error_t items_transferToDisplayString(parsed_json_t json_obj, char
     return parser_ok;
 }
 
-static parser_error_t items_gasToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_gasToDisplayString(__Z_UNUSED parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
     char gasLimit[10];
     uint8_t gasLimit_len = 0;
     char gasPrice[64];
     uint8_t gasPrice_len = 0;
-    uint16_t token_index = 0;
     parsed_json_t gas_json_obj;
 
     parser_getJsonValue(&gas_json_obj, JSON_GAS_LIMIT);
@@ -286,7 +284,6 @@ static parser_error_t items_unknownCapabilityToDisplayString(parsed_json_t json_
     uint8_t len = 0;
     uint8_t outVal_idx= 0;
     parsed_json_t args_json;
-    parsed_json_t nth_arg_json;
 
     object_get_value(&json_obj, 0, "name", &token_index);
     len = json_obj.tokens[token_index].end - json_obj.tokens[token_index].start + sizeof("name: ");
