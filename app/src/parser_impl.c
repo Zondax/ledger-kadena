@@ -37,23 +37,6 @@ parser_tx_t *parser_getParserTxObj() {
     return &parser_tx_obj;
 }
 
-parser_error_t parser_isTransfer(parsed_json_t *json_obj) {
-    uint16_t name_token_idx = 0;
-    parser_error_t ret = parser_json_not_a_transfer;
-
-    object_get_value(json_obj, 0, "name", &name_token_idx);
-
-    if (((uint16_t) strlen("coin.TRANSFER")) == (json_obj->tokens[name_token_idx].end - json_obj->tokens[name_token_idx].start)) {
-        if (MEMCMP("coin.TRANSFER",
-            json_obj->buffer + json_obj->tokens[name_token_idx].start,
-            json_obj->tokens[name_token_idx].end - json_obj->tokens[name_token_idx].start) == 0) {
-            ret = parser_ok;
-        }
-    }
-
-    return ret;
-}
-
 uint16_t parser_getNumberOfClistElements() {
     uint16_t number_of_elements = 0;
     parsed_json_t *json_all = &parser_tx_obj.tx_json.json;
@@ -68,11 +51,40 @@ uint16_t parser_getNumberOfClistElements() {
     return number_of_elements;
 }
 
+parser_error_t parser_findKeyInClist(uint16_t key_token_index) {
+    parsed_json_t *json_all = &parser_tx_obj.tx_json.json;
+    uint16_t token_index = 0;
+    uint16_t clist_token_index = 0;
+    uint16_t args_token_index = 0;
+    uint16_t number_of_args = 0;
+
+    parser_getJsonValue(&clist_token_index, JSON_SIGNERS);
+    array_get_nth_element(&json_all, clist_token_index, 0, &clist_token_index);
+    parser_getJsonValue(&clist_token_index, JSON_CLIST);
+
+    for (uint16_t i = 0; i < parser_getNumberOfClistElements(); i++) {
+        CHECK_ERROR(array_get_nth_element(json_all, clist_token_index, i, &args_token_index));
+        CHECK_ERROR(parser_getJsonValue(&args_token_index, JSON_ARGS));
+        CHECK_ERROR(array_get_element_count(json_all, args_token_index, &number_of_args));
+        for (uint16_t j = 0; j < number_of_args; j++) {
+            array_get_nth_element(json_all, args_token_index, j, &token_index);
+            if (MEMCMP(json_all->buffer + json_all->tokens[key_token_index].start,
+                json_all->buffer + json_all->tokens[token_index].start,
+                json_all->tokens[key_token_index].end - json_all->tokens[key_token_index].start) == 0) {
+                return parser_ok;
+            }
+        }
+    }
+
+    return parser_no_data;
+}
+
+
 parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key) {
     parsed_json_t json_obj;
     uint16_t token_index = 0;
 
-    object_get_value(&parser_tx_obj.tx_json.json, *json_token_index, key, &token_index);
+    CHECK_ERROR(object_get_value(&parser_tx_obj.tx_json.json, *json_token_index, key, &token_index));
 
     json_parse(&json_obj, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[token_index].start, parser_tx_obj.tx_json.json.tokens[token_index].end - parser_tx_obj.tx_json.json.tokens[token_index].start);
 
@@ -85,14 +97,6 @@ parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key) 
     return parser_ok;
 }
 
-parser_error_t parser_getNthClistElement(parsed_json_t *json_obj, uint8_t clist_array_idx) {
-    uint16_t token_index = 0;
-    array_get_nth_element(json_obj, 0, clist_array_idx, &token_index);
-    json_parse(json_obj, json_obj->buffer + json_obj->tokens[token_index].start, json_obj->tokens[token_index].end - json_obj->tokens[token_index].start);
-
-    return parser_ok;
-}
-
 parser_error_t parser_getGasObject(uint16_t *json_token_index) {
     uint16_t token_index = 0;
     parsed_json_t *json_all = &parser_tx_obj.tx_json.json;
@@ -101,7 +105,7 @@ parser_error_t parser_getGasObject(uint16_t *json_token_index) {
     for (uint16_t i = 0; i < parser_getNumberOfClistElements(); i++) {
         array_get_nth_element(json_all, *json_token_index, i, &token_index);
 
-        object_get_value(json_all, token_index, "name", &name_token_index);
+        object_get_value(json_all, token_index, JSON_NAME, &name_token_index);
         if (MEMCMP("coin.GAS", json_all->buffer + json_all->tokens[name_token_index].start,
             json_all->tokens[name_token_index].end - json_all->tokens[name_token_index].start) == 0) {
             *json_token_index = token_index;
