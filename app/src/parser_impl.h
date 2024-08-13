@@ -51,9 +51,9 @@ parser_error_t parser_getTransferTo(char **to, uint16_t *to_len);
 parser_error_t parser_getTransferAmount(char **amount, uint16_t *amount_len);
 uint16_t parser_getNumberOfClistElements();
 uint16_t parser_getNumberOfTransfers();
-parser_error_t parser_getJsonValue(parsed_json_t *json_obj, const char *key);
+parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key);
 parser_error_t parser_getNthClistElement(parsed_json_t *json_obj, uint8_t clist_array_idx);
-parser_error_t parser_getGasObject(parsed_json_t *json_obj);
+parser_error_t parser_getGasObject(uint16_t *json_token_index);
 parser_error_t parser_getChainId(parsed_json_t *json_obj);
 
 #ifdef __cplusplus

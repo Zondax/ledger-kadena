@@ -22,8 +22,8 @@
 
 typedef struct {
     char key[25];
-    parsed_json_t json;
-    parser_error_t (*toString)(parsed_json_t json_obj, char *outVal, uint16_t *outValLen);
+    uint16_t json_token_index;
+    parser_error_t (*toString)(uint16_t token_index, char *outVal, uint16_t *outValLen);
 } item_t;
 
 typedef struct {

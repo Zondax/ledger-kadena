@@ -56,23 +56,31 @@ parser_error_t parser_isTransfer(parsed_json_t *json_obj) {
 
 uint16_t parser_getNumberOfClistElements() {
     uint16_t number_of_elements = 0;
-    parsed_json_t json_obj;
+    parsed_json_t *json_all = &parser_tx_obj.tx_json.json;
+    uint16_t token_index = 0;
 
-    parser_getJsonValue(&json_obj, JSON_META);
-    parser_getJsonValue(&json_obj, JSON_CLIST);
-    CHECK_ERROR(array_get_element_count(&json_obj, 0, &number_of_elements));
+    parser_getJsonValue(&token_index, JSON_SIGNERS);
+    array_get_nth_element(&json_all, token_index, 0, &token_index);
+    parser_getJsonValue(&token_index, JSON_CLIST);
+
+    CHECK_ERROR(array_get_element_count(json_all, token_index, &number_of_elements));
+
     return number_of_elements;
 }
 
-// TODO: join all these functions into a parametrized one
-parser_error_t parser_getJsonValue(parsed_json_t *json_obj, const char *key) {
+parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key) {
+    parsed_json_t json_obj;
     uint16_t token_index = 0;
-    object_get_value(&parser_tx_obj.tx_json.json, 0, key, &token_index);
-    json_parse(json_obj, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[token_index].start, parser_tx_obj.tx_json.json.tokens[token_index].end - parser_tx_obj.tx_json.json.tokens[token_index].start);
 
-    if (MEMCMP("null", json_obj->buffer, json_obj->bufferLen) == 0) {
+    object_get_value(&parser_tx_obj.tx_json.json, *json_token_index, key, &token_index);
+
+    json_parse(&json_obj, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[token_index].start, parser_tx_obj.tx_json.json.tokens[token_index].end - parser_tx_obj.tx_json.json.tokens[token_index].start);
+
+    if (MEMCMP("null", json_obj.buffer, json_obj.bufferLen) == 0) {
         return parser_no_data;
     }
+
+    *json_token_index = token_index;
 
     return parser_ok;
 }
@@ -85,19 +93,18 @@ parser_error_t parser_getNthClistElement(parsed_json_t *json_obj, uint8_t clist_
     return parser_ok;
 }
 
-parser_error_t parser_getGasObject(parsed_json_t *json_obj) {
+parser_error_t parser_getGasObject(uint16_t *json_token_index) {
     uint16_t token_index = 0;
-    parsed_json_t *json_clist = json_obj;
-    parsed_json_t temp_json_obj;
+    parsed_json_t *json_all = &parser_tx_obj.tx_json.json;
+    uint16_t name_token_index = 0;
     
     for (uint16_t i = 0; i < parser_getNumberOfClistElements(); i++) {
-        array_get_nth_element(json_clist, 0, i, &token_index);
-        json_parse(&temp_json_obj, json_clist->buffer + json_clist->tokens[token_index].start, json_clist->tokens[token_index].end - json_clist->tokens[token_index].start);
+        array_get_nth_element(json_all, *json_token_index, i, &token_index);
 
-        object_get_value(&temp_json_obj, 0, "name", &token_index);
-        if (MEMCMP("coin.GAS", temp_json_obj.buffer + temp_json_obj.tokens[token_index].start,
-            temp_json_obj.tokens[token_index].end - temp_json_obj.tokens[token_index].start) == 0) {
-            *json_obj = temp_json_obj;
+        object_get_value(json_all, token_index, "name", &name_token_index);
+        if (MEMCMP("coin.GAS", json_all->buffer + json_all->tokens[name_token_index].start,
+            json_all->tokens[name_token_index].end - json_all->tokens[name_token_index].start) == 0) {
+            *json_token_index = token_index;
             return parser_ok;
         }
     }

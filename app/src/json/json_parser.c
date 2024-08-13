@@ -189,42 +189,6 @@ parser_error_t object_get_value(const parsed_json_t *json,
         if (key_token.start <= prev_element_end) {
             continue;
         }
-
-        if (value_token.type == JSMN_OBJECT) {
-            // An object was found, look inside it
-            parsed_json_t json_obj;
-            uint16_t token_index_before_recursion = *token_index;
-
-            json_parse(&json_obj, json->buffer + value_token.start, value_token.end - value_token.start);
-            
-            if (object_get_value(&json_obj, 0, key_name, token_index) == parser_ok) {
-                *token_index = *token_index + token_index_before_recursion;
-                return parser_ok;
-            }
-        } else if (value_token.type == JSMN_ARRAY) {
-            // An array was found, look inside it
-            parsed_json_t json_array;
-            parsed_json_t json_array_element;
-            uint16_t token_index_before_object_recursion = 0;
-            uint16_t token_index_before_array_iteration = 0;
-            uint16_t element_count = 0;
-
-            json_parse(&json_array, json->buffer + value_token.start, value_token.end - value_token.start);
-
-            CHECK_ERROR(array_get_element_count(&json_array, 0, &element_count))
-
-            for (int i = 0; i < element_count; i++) {
-                CHECK_ERROR(array_get_nth_element(&json_array, 0, i, &token_index_before_array_iteration))
-
-                json_parse(&json_array_element, json_array.buffer + json_array.tokens[token_index_before_array_iteration].start, json_array.tokens[token_index_before_array_iteration].end - json_array.tokens[token_index_before_array_iteration].start);
-                
-                if (object_get_value(&json_array_element, 0, key_name, &token_index_before_object_recursion) == parser_ok) {
-                    *token_index = *token_index + token_index_before_object_recursion + token_index_before_array_iteration;
-                    return parser_ok;
-                }
-            }
-        }
-
         prev_element_end = value_token.end;
 
         if (((uint16_t) strlen(key_name)) == (key_token.end - key_token.start)) {

@@ -19,16 +19,18 @@
 #include "parser_impl.h"
 #include <base64.h>
 
-static parser_error_t items_stdToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen);
-static parser_error_t items_signingToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen);
-static parser_error_t items_requiringToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen);
-static parser_error_t items_transferToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen);
-static parser_error_t items_gasToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen);
-static parser_error_t items_unknownCapabilityToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen);
-static void items_storeGasItem(parsed_json_t *json_gas_obj, uint8_t items_idx, uint8_t *unknown_capabitilies);
-static void items_storeTransferItem(parsed_json_t *json_possible_transfer, uint8_t items_idx, uint8_t *num_of_transfers, uint8_t *unknown_capabitilies);
+static parser_error_t items_stdToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen);
+static parser_error_t items_nothingToDisplayString(__Z_UNUSED uint16_t token_index, char *outVal, uint16_t *outValLen);
+static parser_error_t items_signingToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen);
+static parser_error_t items_requiringToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen);
+static parser_error_t items_transferToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen);
+static parser_error_t items_gasToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen);
+static parser_error_t items_hashToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen);
+static parser_error_t items_unknownCapabilityToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen);
+static void items_storeGasItem(uint16_t json_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies);
+static void items_storeTransferItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t items_idx, uint8_t *num_of_transfers, uint8_t *unknown_capabitilies);
 
-#define CURR_ITEM_JSON item_array.items[items_idx].json
+#define CURR_ITEM_TOKEN item_array.items[items_idx].json_token_index
 
 item_array_t item_array;
 
@@ -49,8 +51,7 @@ item_array_t *items_getItemArray() {
 }
 
 void items_storeItems() {
-    parsed_json_t json_clist;
-    parsed_json_t json_possible_transfer;
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
     uint8_t items_idx = 0;
     uint8_t unknown_capabitilies = 1;
     uint8_t num_of_transfers = 1;
@@ -61,7 +62,7 @@ void items_storeItems() {
     items_idx++;
 
     // Skip item if network id is not available
-    if (parser_getJsonValue(&CURR_ITEM_JSON, JSON_NETWORK_ID) == parser_ok) {
+    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_NETWORK_ID) == parser_ok) {
         strcpy(item_array.items[items_idx].key, "On Network");
         item_array.items[items_idx].toString = items_stdToDisplayString;
         items_idx++;
@@ -71,33 +72,36 @@ void items_storeItems() {
     item_array.items[items_idx].toString = items_requiringToDisplayString;
     items_idx++;
 
-    if (parser_getJsonValue(&CURR_ITEM_JSON, JSON_META) == parser_ok) {
-        if (parser_getJsonValue(&CURR_ITEM_JSON, JSON_SENDER) == parser_ok) {
+    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_META) == parser_ok) {
+        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_SENDER) == parser_ok) {
             strcpy(item_array.items[items_idx].key, "Of Key");
             item_array.items[items_idx].toString = items_stdToDisplayString;
             items_idx++;
         }
     }
 
-    if (parser_getJsonValue(&CURR_ITEM_JSON, JSON_SIGNERS) == parser_ok) {
-        if (parser_getJsonValue(&json_clist, JSON_CLIST) == parser_ok) {
-            parser_getGasObject(&json_clist);
-            items_storeGasItem(&json_clist, items_idx, &unknown_capabitilies);
+
+    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_SIGNERS) == parser_ok) {
+        array_get_nth_element(&json_all, CURR_ITEM_TOKEN, 0, &CURR_ITEM_TOKEN);
+        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_CLIST) == parser_ok) {
+            parser_getGasObject(&CURR_ITEM_TOKEN);
+            items_storeGasItem(CURR_ITEM_TOKEN, items_idx, &unknown_capabitilies);
             items_idx++;
         }
     }
 
-    if (parser_getJsonValue(&json_clist, JSON_SIGNERS) == parser_ok) {
-        if (parser_getJsonValue(&json_clist, JSON_CLIST) == parser_ok) {
+    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_SIGNERS) == parser_ok) {
+        array_get_nth_element(&json_all, CURR_ITEM_TOKEN, 0, &CURR_ITEM_TOKEN);
+        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_CLIST) == parser_ok) {
+            uint16_t clist_token_index = CURR_ITEM_TOKEN;
             for (uint8_t i = 0; i < parser_getNumberOfClistElements(); i++) {
-                if (array_get_nth_element(&json_clist, 0, i, &token_index) == parser_ok) {
-                    json_parse(&json_possible_transfer, json_clist.buffer + json_clist.tokens[token_index].start,
-                    json_clist.tokens[token_index].end - json_clist.tokens[token_index].start);
-
-                    if (object_get_value(&json_possible_transfer, 0, "name", &token_index) == parser_ok) {
-                        if (MEMCMP("coin.TRANSFER", json_possible_transfer.buffer + json_possible_transfer.tokens[token_index].start,
-                                json_possible_transfer.tokens[token_index].end - json_possible_transfer.tokens[token_index].start) == 0) {
-                            items_storeTransferItem(&json_possible_transfer, items_idx, &num_of_transfers, &unknown_capabitilies);
+                if (array_get_nth_element(&json_all, clist_token_index, i, &token_index) == parser_ok) {
+                    uint16_t name_token_index = 0;
+                    if (object_get_value(&json_all, token_index, "name", &name_token_index) == parser_ok) {
+                        if (MEMCMP("coin.TRANSFER", json_all.buffer + json_all.tokens[name_token_index].start,
+                                json_all.tokens[name_token_index].end - json_all.tokens[name_token_index].start) == 0) {
+                            CURR_ITEM_TOKEN = token_index;
+                            items_storeTransferItem(&json_all, token_index, items_idx, &num_of_transfers, &unknown_capabitilies);
                             items_idx++;
                         }
                     }
@@ -106,15 +110,15 @@ void items_storeItems() {
         }
     }
 
-    if (parser_getJsonValue(&CURR_ITEM_JSON, JSON_META) == parser_ok) {
-        if (parser_getJsonValue(&CURR_ITEM_JSON, JSON_CHAIN_ID) == parser_ok) {
+    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_META) == parser_ok) {
+        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_CHAIN_ID) == parser_ok) {
             strcpy(item_array.items[items_idx].key, "On Chain");
             item_array.items[items_idx].toString = items_stdToDisplayString;
             items_idx++;
         }
     }
 
-    if (parser_getJsonValue(&CURR_ITEM_JSON, JSON_META) == parser_ok) {
+    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_META) == parser_ok) {
         strcpy(item_array.items[items_idx].key, "Using Gas");
         item_array.items[items_idx].toString = items_gasToDisplayString;
         items_idx++;
@@ -136,21 +140,19 @@ void items_storeItems() {
         }
     }
 
-    CURR_ITEM_JSON.buffer = base64_hash;
-    CURR_ITEM_JSON.bufferLen = sizeof(base64_hash) - 1;
-    item_array.items[items_idx].toString = items_stdToDisplayString;
+    item_array.items[items_idx].toString = items_hashToDisplayString;
     items_idx++;
 
-    /*
     strcpy(item_array.items[items_idx].key, "Sign for Address");
+    /*
     Currently launching cpp tests, so this is not available
     uint8_t address[32];
     uint16_t address_size;
     CHECK_ERROR(crypto_fillAddress(address, sizeof(address), &address_size));
     snprintf(outVal, address_size + 1, "%s", address);
-    item_array.items[items_idx].toString = items_stdToDisplayString;
-    items_idx++;
     */
+    item_array.items[items_idx].toString = items_hashToDisplayString;
+    items_idx++;
 
     item_array.numOfItems = items_idx;
 }
@@ -159,16 +161,13 @@ uint16_t items_getTotalItems() {
     return item_array.numOfItems;
 }
 
-static void items_storeGasItem(parsed_json_t *json_gas_obj, uint8_t items_idx, uint8_t *unknown_capabitilies) {
+static void items_storeGasItem(uint16_t json_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
-    parsed_json_t args_json;
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
 
-    CURR_ITEM_JSON = *json_gas_obj;
-    object_get_value(json_gas_obj, 0, "args", &token_index);
-    json_parse(&args_json, json_gas_obj->buffer + json_gas_obj->tokens[token_index].start,
-        json_gas_obj->tokens[token_index].end - json_gas_obj->tokens[token_index].start);
-    array_get_element_count(&args_json, 0, &args_count);
+    object_get_value(&json_all, json_token_index, "args", &token_index);
+    array_get_element_count(&json_all, token_index, &args_count);
 
     if (args_count > 0) {
         snprintf(item_array.items[items_idx].key, sizeof(item_array.items[items_idx].key), "Unknown Capability %d", *unknown_capabitilies);
@@ -176,23 +175,17 @@ static void items_storeGasItem(parsed_json_t *json_gas_obj, uint8_t items_idx, u
         item_array.items[items_idx].toString = items_unknownCapabilityToDisplayString;
     } else {
         strcpy(item_array.items[items_idx].key, "Paying Gas");
-        item_array.items[items_idx].json.bufferLen = 0;
-        item_array.items[items_idx].toString = items_stdToDisplayString;
+        item_array.items[items_idx].toString = items_nothingToDisplayString;
     }
 }
 
-static void items_storeTransferItem(parsed_json_t *json_possible_transfer, uint8_t items_idx, uint8_t *num_of_transfers, uint8_t *unknown_capabitilies) {
+static void items_storeTransferItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t items_idx, uint8_t *num_of_transfers, uint8_t *unknown_capabitilies) {
     uint16_t token_index = 0;
     uint16_t num_of_args = 0;
-    parsed_json_t args_json;
 
-    CURR_ITEM_JSON = *json_possible_transfer;
+    object_get_value(json_all, transfer_token_index, "args", &token_index);
 
-    object_get_value(json_possible_transfer, 0, "args", &token_index);
-    json_parse(&args_json, json_possible_transfer->buffer + json_possible_transfer->tokens[token_index].start,
-        json_possible_transfer->tokens[token_index].end - json_possible_transfer->tokens[token_index].start);
-
-    array_get_element_count(&args_json, 0, &num_of_args);
+    array_get_element_count(json_all, token_index, &num_of_args);
 
     if (num_of_args == 3) {
         snprintf(item_array.items[items_idx].key, sizeof(item_array.items[items_idx].key), "Transfer %d", *num_of_transfers);
@@ -205,25 +198,34 @@ static void items_storeTransferItem(parsed_json_t *json_possible_transfer, uint8
     }
 }
 
-static parser_error_t items_stdToDisplayString(__Z_UNUSED parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
-    *outValLen = json_obj.bufferLen + 1;
-    snprintf(outVal, *outValLen, "%s", json_obj.buffer);
+static parser_error_t items_stdToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen) {
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+
+    *outValLen = json_all.tokens[token_index].end - json_all.tokens[token_index].start + 1;
+    snprintf(outVal, *outValLen, "%s", json_all.buffer + json_all.tokens[token_index].start);
+
     return parser_ok;
 }
 
-static parser_error_t items_signingToDisplayString(__Z_UNUSED parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_nothingToDisplayString(__Z_UNUSED uint16_t token_index, char *outVal, uint16_t *outValLen) {
+    *outValLen = 1;
+    snprintf(outVal, *outValLen, " ");
+    return parser_ok;
+}
+
+static parser_error_t items_signingToDisplayString(__Z_UNUSED uint16_t token_index, char *outVal, uint16_t *outValLen) {
     *outValLen = sizeof("Transaction");
     snprintf(outVal, *outValLen, "Transaction");
     return parser_ok;
 }
 
-static parser_error_t items_requiringToDisplayString(__Z_UNUSED parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_requiringToDisplayString(__Z_UNUSED uint16_t token_index, char *outVal, uint16_t *outValLen) {
     *outValLen = sizeof("Capabilities");
     snprintf(outVal, *outValLen, "Capabilities");
     return parser_ok;
 }
 
-static parser_error_t items_transferToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_transferToDisplayString(__Z_UNUSED uint16_t token_index_json, char *outVal, uint16_t *outValLen) {
     char amount[50];
     uint8_t amount_len = 0;
     char to[65];
@@ -231,24 +233,23 @@ static parser_error_t items_transferToDisplayString(parsed_json_t json_obj, char
     char from[65];
     uint8_t from_len = 0;
     uint16_t token_index = 0;
-    parsed_json_t args_json;
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
 
-    object_get_value(&json_obj, 0, "args", &token_index);
-    json_parse(&args_json, json_obj.buffer + json_obj.tokens[token_index].start,
-        json_obj.tokens[token_index].end - json_obj.tokens[token_index].start);
-    array_get_nth_element(&args_json, 0, 0, &token_index);
-    strncpy(from, args_json.buffer + args_json.tokens[token_index].start, args_json.tokens[token_index].end - args_json.tokens[token_index].start);
-    from_len = args_json.tokens[token_index].end - args_json.tokens[token_index].start;
+    object_get_value(&json_all, token_index_json, "args", &token_index);
+
+    array_get_nth_element(&json_all, token_index, 0, &token_index);
+    strncpy(from, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
+    from_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
     from[from_len] = '\0';
 
-    array_get_nth_element(&args_json, 0, 1, &token_index);
-    strncpy(to, args_json.buffer + args_json.tokens[token_index].start, args_json.tokens[token_index].end - args_json.tokens[token_index].start);
-    to_len = args_json.tokens[token_index].end - args_json.tokens[token_index].start;
+    array_get_nth_element(&json_all, token_index, 1, &token_index);
+    strncpy(to, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
+    to_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
     to[to_len] = '\0';
 
-    array_get_nth_element(&args_json, 0, 2, &token_index);
-    strncpy(amount, args_json.buffer + args_json.tokens[token_index].start, args_json.tokens[token_index].end - args_json.tokens[token_index].start);
-    amount_len = args_json.tokens[token_index].end - args_json.tokens[token_index].start;
+    array_get_nth_element(&json_all, token_index, 2, &token_index);
+    strncpy(amount, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
+    amount_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
     amount[amount_len] = '\0';
 
     *outValLen = amount_len + from_len + to_len + sizeof(" from ") + sizeof(" to ") + 4 * sizeof("\"");
@@ -257,20 +258,22 @@ static parser_error_t items_transferToDisplayString(parsed_json_t json_obj, char
     return parser_ok;
 }
 
-static parser_error_t items_gasToDisplayString(__Z_UNUSED parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_gasToDisplayString(uint16_t token_index, char *outVal, uint16_t *outValLen) {
     char gasLimit[10];
     uint8_t gasLimit_len = 0;
     char gasPrice[64];
     uint8_t gasPrice_len = 0;
-    parsed_json_t gas_json_obj;
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    uint16_t meta_token_index = token_index;
 
-    parser_getJsonValue(&gas_json_obj, JSON_GAS_LIMIT);
-    gasLimit_len = gas_json_obj.bufferLen + 1;
-    snprintf(gasLimit, gasLimit_len, "%s", gas_json_obj.buffer);
+    parser_getJsonValue(&token_index, JSON_GAS_LIMIT);
+    gasLimit_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start + 1;
+    snprintf(gasLimit, gasLimit_len, "%s", json_all.buffer + json_all.tokens[token_index].start);
 
-    parser_getJsonValue(&gas_json_obj, JSON_GAS_PRICE);
-    gasPrice_len = gas_json_obj.bufferLen + 1;
-    snprintf(gasPrice, gasPrice_len, "%s", gas_json_obj.buffer);
+    token_index = meta_token_index;
+    parser_getJsonValue(&token_index, JSON_GAS_PRICE);
+    gasPrice_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start + 1;
+    snprintf(gasPrice, gasPrice_len, "%s", json_all.buffer + json_all.tokens[token_index].start);
 
     *outValLen = gasLimit_len + gasPrice_len + sizeof("at most ") + sizeof(" at price ");
     snprintf(outVal, *outValLen, "at most %s at price %s", gasLimit, gasPrice);
@@ -278,16 +281,22 @@ static parser_error_t items_gasToDisplayString(__Z_UNUSED parsed_json_t json_obj
     return parser_ok;
 }
 
-static parser_error_t items_unknownCapabilityToDisplayString(parsed_json_t json_obj, char *outVal, uint16_t *outValLen) {
+static parser_error_t items_hashToDisplayString(uint16_t token_index_json, char *outVal, uint16_t *outValLen) {
+    *outValLen = sizeof(base64_hash);
+    snprintf(outVal, *outValLen, "%s", base64_hash);
+    return parser_ok;
+}
+
+static parser_error_t items_unknownCapabilityToDisplayString(uint16_t token_index_json, char *outVal, uint16_t *outValLen) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
     uint8_t len = 0;
     uint8_t outVal_idx= 0;
-    parsed_json_t args_json;
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
 
-    object_get_value(&json_obj, 0, "name", &token_index);
-    len = json_obj.tokens[token_index].end - json_obj.tokens[token_index].start + sizeof("name: ");
-    snprintf(outVal, len, "name: %s", json_obj.buffer + json_obj.tokens[token_index].start);
+    object_get_value(&json_all, token_index_json, "name", &token_index);
+    len = json_all.tokens[token_index].end - json_all.tokens[token_index].start + sizeof("name: ");
+    snprintf(outVal, len, "name: %s", json_all.buffer + json_all.tokens[token_index].start);
     outVal_idx += len;
 
     // Remove null terminator
@@ -297,20 +306,19 @@ static parser_error_t items_unknownCapabilityToDisplayString(parsed_json_t json_
     outVal[outVal_idx] = ' ';
     outVal_idx++;
 
-    object_get_value(&json_obj, 0, "args", &token_index);
-    json_parse(&args_json, json_obj.buffer + json_obj.tokens[token_index].start,
-        json_obj.tokens[token_index].end - json_obj.tokens[token_index].start);
-    array_get_element_count(&args_json, 0, &args_count);
+    object_get_value(&json_all, token_index_json, "args", &token_index);
+    array_get_element_count(&json_all, token_index, &args_count);
 
+    uint16_t args_token_index = 0;
     for (uint8_t i = 0; i < args_count - 1; i++) {
-        array_get_nth_element(&args_json, 0, i, &token_index);
-        if (args_json.tokens[token_index].type == JSMN_STRING) {
+        array_get_nth_element(&json_all, token_index, i, &args_token_index);
+        if (json_all.tokens[args_token_index].type == JSMN_STRING) {
             // Strings go in between double quotes
-            len = args_json.tokens[token_index].end - args_json.tokens[token_index].start + sizeof("arg X: \"\",");
-            snprintf(outVal + outVal_idx, len, "arg %d: \"%s\",", i + 1, args_json.buffer + args_json.tokens[token_index].start);
+            len = json_all.tokens[args_token_index].end - json_all.tokens[args_token_index].start + sizeof("arg X: \"\",");
+            snprintf(outVal + outVal_idx, len, "arg %d: \"%s\",", i + 1, json_all.buffer + json_all.tokens[args_token_index].start);
         } else {
-            len = args_json.tokens[token_index].end - args_json.tokens[token_index].start + sizeof("arg X: ,");
-            snprintf(outVal + outVal_idx, len, "arg %d: %s,", i + 1, args_json.buffer + args_json.tokens[token_index].start);
+            len = json_all.tokens[args_token_index].end - json_all.tokens[args_token_index].start + sizeof("arg X: ,");
+            snprintf(outVal + outVal_idx, len, "arg %d: %s,", i + 1, json_all.buffer + json_all.tokens[args_token_index].start);
         }
         outVal_idx += len;
 
@@ -319,13 +327,13 @@ static parser_error_t items_unknownCapabilityToDisplayString(parsed_json_t json_
     }
     
     // Last arg (without comma)
-    array_get_nth_element(&args_json, 0, args_count - 1, &token_index);
-    if (args_json.tokens[token_index].type == JSMN_STRING) {
-        len = args_json.tokens[token_index].end - args_json.tokens[token_index].start + sizeof("arg X: \"\"");
-        snprintf(outVal + outVal_idx, len, "arg %d: \"%s\"", args_count, args_json.buffer + args_json.tokens[token_index].start);
+    array_get_nth_element(&json_all, token_index, args_count - 1, &args_token_index);
+    if (json_all.tokens[args_token_index].type == JSMN_STRING) {
+        len = json_all.tokens[args_token_index].end - json_all.tokens[args_token_index].start + sizeof("arg X: \"\"");
+        snprintf(outVal + outVal_idx, len, "arg %d: \"%s\"", args_count, json_all.buffer + json_all.tokens[args_token_index].start);
     } else {
-        len = args_json.tokens[token_index].end - args_json.tokens[token_index].start + sizeof("arg X: ");
-        snprintf(outVal + outVal_idx, len, "arg %d: %s", args_count, args_json.buffer + args_json.tokens[token_index].start);
+        len = json_all.tokens[args_token_index].end - json_all.tokens[args_token_index].start + sizeof("arg X: ");
+        snprintf(outVal + outVal_idx, len, "arg %d: %s", args_count, json_all.buffer + json_all.tokens[args_token_index].start);
     }
 
     outVal_idx += len;
