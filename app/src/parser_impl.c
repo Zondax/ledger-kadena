@@ -43,7 +43,7 @@ uint16_t parser_getNumberOfClistElements() {
     uint16_t token_index = 0;
 
     parser_getJsonValue(&token_index, JSON_SIGNERS);
-    array_get_nth_element(&json_all, token_index, 0, &token_index);
+    array_get_nth_element(json_all, token_index, 0, &token_index);
     parser_getJsonValue(&token_index, JSON_CLIST);
 
     CHECK_ERROR(array_get_element_count(json_all, token_index, &number_of_elements));
@@ -51,7 +51,7 @@ uint16_t parser_getNumberOfClistElements() {
     return number_of_elements;
 }
 
-parser_error_t parser_findKeyInClist(uint16_t key_token_index) {
+parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
     parsed_json_t *json_all = &parser_tx_obj.tx_json.json;
     uint16_t token_index = 0;
     uint16_t clist_token_index = 0;
@@ -59,7 +59,7 @@ parser_error_t parser_findKeyInClist(uint16_t key_token_index) {
     uint16_t number_of_args = 0;
 
     parser_getJsonValue(&clist_token_index, JSON_SIGNERS);
-    array_get_nth_element(&json_all, clist_token_index, 0, &clist_token_index);
+    array_get_nth_element(json_all, clist_token_index, 0, &clist_token_index);
     parser_getJsonValue(&clist_token_index, JSON_CLIST);
 
     for (uint16_t i = 0; i < parser_getNumberOfClistElements(); i++) {
@@ -99,6 +99,16 @@ parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key) 
     *json_token_index = token_index;
 
     return parser_ok;
+}
+
+parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, char *outVal, uint8_t *outValLen) {
+    uint16_t token_index = 0;
+    parsed_json_t json_all = parser_tx_obj.tx_json.json;
+
+    array_get_nth_element(&json_all, json_token_index, element_idx, &token_index);
+    strncpy(outVal, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
+    *outValLen = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
+    outVal[*outValLen] = '\0';
 }
 
 parser_error_t parser_getGasObject(uint16_t *json_token_index) {

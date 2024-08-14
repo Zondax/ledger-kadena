@@ -19,19 +19,32 @@
 #include "parser_impl.h"
 #include <base64.h>
 
-static parser_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_signingToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_requiringToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_gasToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_hashToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-static parser_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_signingToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_requiringToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_gasToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_hashToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+static items_error_t items_storeSigningTransaction(uint8_t *items_idx);
+static items_error_t items_storeNetwork(uint8_t *items_idx);
+static items_error_t items_storeRequiringCapabilities(uint8_t *items_idx);
+static items_error_t items_storeKey(uint8_t *items_idx);
+static items_error_t items_validateSigners(uint8_t *items_idx);
+static items_error_t items_storePayingGas(uint8_t *items_idx, uint8_t *unknown_capabitilies);
+static items_error_t items_storeAllTransfers(uint8_t *items_idx, uint8_t *unknown_capabitilies);
+static items_error_t items_storeCaution(uint8_t *items_idx);
+static items_error_t items_storeChainId(uint8_t *items_idx);
+static items_error_t items_storeUsingGas(uint8_t *items_idx);
+static items_error_t items_checkTxLengths(uint8_t *items_idx);
+static items_error_t items_storeHash(uint8_t *items_idx);
+static items_error_t items_storeSignature(uint8_t *items_idx);
 static items_error_t items_storeGasItem(uint16_t json_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies);
 static items_error_t items_storeTransferItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t items_idx, uint8_t *num_of_transfers, uint8_t *unknown_capabitilies);
 static items_error_t items_storeCrossTransferItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t items_idx, uint8_t *num_of_transfers, uint8_t *unknown_capabitilies);
@@ -61,153 +74,248 @@ void items_storeItems() {
     parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
     uint8_t items_idx = 0;
     uint8_t unknown_capabitilies = 1;
-    uint8_t num_of_transfers = 1;
     uint16_t token_index = 0;
-    bool unscoped_signer = false;
 
-    strcpy(item_array.items[items_idx].key, "Signing");
-    item_array.toString[items_idx] = items_signingToDisplayString;
-    items_idx++;
+    items_storeSigningTransaction(&items_idx);
 
-    // Skip item if network id is not available
-    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_NETWORK_ID) == parser_ok) {
-        strcpy(item_array.items[items_idx].key, "On Network");
-        item_array.toString[items_idx] = items_stdToDisplayString;
-        items_idx++;
+    items_storeNetwork(&items_idx);
+
+    items_storeRequiringCapabilities(&items_idx);
+
+    items_storeKey(&items_idx);
+
+    items_validateSigners(&items_idx);
+
+    items_storePayingGas(&items_idx, &unknown_capabitilies);
+
+    items_storeAllTransfers(&items_idx, &unknown_capabitilies);
+
+    if (parser_validateMetaField() != parser_ok) {
+        items_storeCaution(&items_idx);
+    } else {
+        items_storeChainId(&items_idx);
+
+        items_storeUsingGas(&items_idx);
     }
 
-    strcpy(item_array.items[items_idx].key, "Requiring");
-    item_array.toString[items_idx] = items_requiringToDisplayString;
-    items_idx++;
+    items_checkTxLengths(&items_idx);
 
-    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_SIGNERS) == parser_ok) {
-        array_get_nth_element(&json_all, CURR_ITEM_TOKEN, 0, &CURR_ITEM_TOKEN);
-        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_PUBKEY) == parser_ok) {
-            strcpy(item_array.items[items_idx].key, "Of Key");
-            item_array.toString[items_idx] = items_stdToDisplayString;
-            items_idx++;
+    items_storeHash(&items_idx);
+
+    items_storeSignature(&items_idx);
+
+    item_array.numOfItems = items_idx;
+}
+
+uint16_t items_getTotalItems() {
+    return item_array.numOfItems;
+}
+
+static items_error_t items_storeSigningTransaction(uint8_t *items_idx) {
+    strcpy(item_array.items[*items_idx].key, "Signing");
+    item_array.toString[*items_idx] = items_signingToDisplayString;
+    (*items_idx)++;
+
+    return items_ok;
+}
+
+static items_error_t items_storeNetwork(uint8_t *items_idx) {
+    if (parser_getJsonValue(&item_array.items[*items_idx].json_token_index, JSON_NETWORK_ID) == parser_ok) {
+        strcpy(item_array.items[*items_idx].key, "On Network");
+        item_array.toString[*items_idx] = items_stdToDisplayString;
+        (*items_idx)++;
+    }
+
+    return items_ok;
+}
+
+static items_error_t items_storeRequiringCapabilities(uint8_t *items_idx) {
+    strcpy(item_array.items[*items_idx].key, "Requiring");
+    item_array.toString[*items_idx] = items_requiringToDisplayString;
+    (*items_idx)++;
+
+    return items_ok;
+}
+
+static items_error_t items_storeKey(uint8_t *items_idx) {
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
+
+    if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
+        array_get_nth_element(&json_all, *curr_token_idx, 0, curr_token_idx);
+        if (parser_getJsonValue(curr_token_idx, JSON_PUBKEY) == parser_ok) {
+            strcpy(item_array.items[*items_idx].key, "Of Key");
+            item_array.toString[*items_idx] = items_stdToDisplayString;
+            (*items_idx)++;
         }
     }
 
-    // TODO : Cleanup
-    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_SIGNERS) == parser_ok) {
-        array_get_nth_element(&json_all, CURR_ITEM_TOKEN, 0, &CURR_ITEM_TOKEN);
-        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_CLIST) == parser_ok) {
-            uint16_t clist_token_index = CURR_ITEM_TOKEN;
+    return items_ok;
+}
+
+static items_error_t items_validateSigners(uint8_t *items_idx) {
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
+    uint16_t token_index = 0;
+
+    if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
+        array_get_nth_element(&json_all, *curr_token_idx, 0, curr_token_idx);
+        if (parser_getJsonValue(curr_token_idx, JSON_CLIST) == parser_ok) {
+            uint16_t clist_token_index = *curr_token_idx;
+
             for (uint8_t i = 0; i < parser_getNumberOfClistElements(); i++) {
                 if (array_get_nth_element(&json_all, clist_token_index, i, &token_index) == parser_ok) {
                     uint16_t name_token_index = 0;
                     if (object_get_value(&json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
                         if (MEMCMP("coin.TRANSFER", json_all.buffer + json_all.tokens[name_token_index].start,
-                                json_all.tokens[name_token_index].end - json_all.tokens[name_token_index].start) == 0) {
-                            if (parser_findKeyInClist(item_array.items[items_idx - 1].json_token_index) == parser_no_data) {
-                                unscoped_signer = true;
-                                break;
+                                sizeof("coin.TRANSFER") - 1) == 0) {
+                            if (parser_findPubKeyInClist(item_array.items[*items_idx - 1].json_token_index) == parser_ok) {
+                                item_array.items[*items_idx].json_token_index = 0;
+                                return items_ok;
                             }
-                        } 
+                            break;
+                        }
                     }
                 }
             }
+            item_array.items[*items_idx].json_token_index = 0;
+            return items_ok;
+        }
+    }
+
+    strcpy(item_array.items[*items_idx].key, "Unscoped Signer");
+    *curr_token_idx = item_array.items[*items_idx - 1].json_token_index;
+    item_array.toString[*items_idx] = items_stdToDisplayString;
+    (*items_idx)++;
+
+    return items_ok;
+}
+
+static items_error_t items_storePayingGas(uint8_t *items_idx, uint8_t *unknown_capabitilies) {
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
+
+    if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
+        array_get_nth_element(&json_all, *curr_token_idx, 0, curr_token_idx);
+        if (parser_getJsonValue(curr_token_idx, JSON_CLIST) == parser_ok) {
+            parser_getGasObject(curr_token_idx);
+            items_storeGasItem(*curr_token_idx, *items_idx, unknown_capabitilies);
+            (*items_idx)++;
         } else {
-            // No Clist given
-            unscoped_signer = true;
+            *curr_token_idx = 0;
         }
     }
 
-    if (unscoped_signer) {
-        strcpy(item_array.items[items_idx].key, "Unscoped Signer");
-        CURR_ITEM_TOKEN = item_array.items[items_idx - 1].json_token_index;
-        item_array.toString[items_idx] = items_stdToDisplayString;
-        items_idx++;
-    }
+    return items_ok;
+}
 
-    CURR_ITEM_TOKEN = 0;
-    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_SIGNERS) == parser_ok) {
-        array_get_nth_element(&json_all, CURR_ITEM_TOKEN, 0, &CURR_ITEM_TOKEN);
-        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_CLIST) == parser_ok) {
-            parser_getGasObject(&CURR_ITEM_TOKEN);
-            items_storeGasItem(CURR_ITEM_TOKEN, items_idx, &unknown_capabitilies);
-            items_idx++;
-        }
-    }
+static items_error_t items_storeAllTransfers(uint8_t *items_idx, uint8_t *unknown_capabitilies) {
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
+    uint16_t token_index = 0;
+    uint8_t num_of_transfers = 1;
 
-    CURR_ITEM_TOKEN = 0;
-    if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_SIGNERS) == parser_ok) {
-        array_get_nth_element(&json_all, CURR_ITEM_TOKEN, 0, &CURR_ITEM_TOKEN);
-        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_CLIST) == parser_ok) {
-            uint16_t clist_token_index = CURR_ITEM_TOKEN;
+    if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
+        array_get_nth_element(&json_all, *curr_token_idx, 0, curr_token_idx);
+        if (parser_getJsonValue(curr_token_idx, JSON_CLIST) == parser_ok) {
+            uint16_t clist_token_index = *curr_token_idx;
             for (uint8_t i = 0; i < parser_getNumberOfClistElements(); i++) {
                 if (array_get_nth_element(&json_all, clist_token_index, i, &token_index) == parser_ok) {
                     uint16_t name_token_index = 0;
                     if (object_get_value(&json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
                         if (MEMCMP("coin.TRANSFER_XCHAIN", json_all.buffer + json_all.tokens[name_token_index].start,
                                 sizeof("coin.TRANSFER_XCHAIN") - 1) == 0) {
-                            CURR_ITEM_TOKEN = token_index;
-                            items_storeCrossTransferItem(&json_all, token_index, items_idx, &num_of_transfers, &unknown_capabitilies);
-                            items_idx++;
+                            *curr_token_idx = token_index;
+                            items_storeCrossTransferItem(&json_all, token_index, *items_idx, &num_of_transfers, unknown_capabitilies);
+                            (*items_idx)++;
                         } else if (MEMCMP("coin.TRANSFER", json_all.buffer + json_all.tokens[name_token_index].start,
                                 sizeof("coin.TRANSFER") - 1) == 0) {
-                            CURR_ITEM_TOKEN = token_index;
-                            items_storeTransferItem(&json_all, token_index, items_idx, &num_of_transfers, &unknown_capabitilies);
-                            items_idx++;
+                            *curr_token_idx = token_index;
+                            items_storeTransferItem(&json_all, token_index, *items_idx, &num_of_transfers, unknown_capabitilies);
+                            (*items_idx)++;
                         } else if (MEMCMP("coin.ROTATE", json_all.buffer + json_all.tokens[name_token_index].start,
                                 sizeof("coin.ROTATE") - 1) == 0) {
-                            CURR_ITEM_TOKEN = token_index;
-                            items_storeRotateItem(&json_all, token_index, items_idx, &unknown_capabitilies);
-                            items_idx++;
+                            *curr_token_idx = token_index;
+                            items_storeRotateItem(&json_all, token_index, *items_idx, unknown_capabitilies);
+                            (*items_idx)++;
                         } else if (MEMCMP("coin.GAS", json_all.buffer + json_all.tokens[name_token_index].start,
                                 sizeof("coin.GAS") - 1) != 0) {
                             // Any other case that's not coin.GAS
-                            CURR_ITEM_TOKEN = token_index;
-                            items_storeUnknownItem(&json_all, token_index, items_idx, &unknown_capabitilies);
-                            items_idx++;
-                            item_array.toString[items_idx] = items_unknownCapabilityToDisplayString;
+                            *curr_token_idx = token_index;
+                            items_storeUnknownItem(&json_all, token_index, *items_idx, unknown_capabitilies);
+                            item_array.toString[*items_idx] = items_unknownCapabilityToDisplayString;
+                            (*items_idx)++;
                         }
+                        curr_token_idx = &item_array.items[*items_idx].json_token_index;
                     }
                 }
             }
         } else {
             // No Clist given, Raise warning
-            strcpy(item_array.items[items_idx].key, "WARNING");
-            item_array.toString[items_idx] = items_warningToDisplayString;
-            items_idx++;
+            strcpy(item_array.items[*items_idx].key, "WARNING");
+            item_array.toString[*items_idx] = items_warningToDisplayString;
+            (*items_idx)++;
         }
     }
 
-    if (parser_validateMetaField() != parser_ok) {
-        strcpy(item_array.items[items_idx].key, "CAUTION");
-        item_array.toString[items_idx] = items_cautionToDisplayString;
-        items_idx++;
+    *curr_token_idx = 0;
+
+    return items_ok;
+}
+
+static items_error_t items_storeCaution(uint8_t *items_idx) {
+    strcpy(item_array.items[*items_idx].key, "CAUTION");
+    item_array.toString[*items_idx] = items_cautionToDisplayString;
+    (*items_idx)++;
+    return items_ok;
+}
+
+static items_error_t items_storeChainId(uint8_t *items_idx) {
+    uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
+
+    if (parser_getJsonValue(curr_token_idx, JSON_META) == parser_ok) {
+        if (parser_getJsonValue(curr_token_idx, JSON_CHAIN_ID) == parser_ok) {
+            strcpy(item_array.items[*items_idx].key, "On Chain");
+            item_array.toString[*items_idx] = items_stdToDisplayString;
+            (*items_idx)++;
+        }
+    }
+    return items_ok;
+}
+
+static items_error_t items_storeUsingGas(uint8_t *items_idx) {
+    uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
+
+    if (parser_getJsonValue(curr_token_idx, JSON_META) == parser_ok) {
+        strcpy(item_array.items[*items_idx].key, "Using Gas");
+        item_array.toString[*items_idx] = items_gasToDisplayString;
+        (*items_idx)++;
     } else {
-        CURR_ITEM_TOKEN = 0;
-        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_META) == parser_ok) {
-            if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_CHAIN_ID) == parser_ok) {
-                strcpy(item_array.items[items_idx].key, "On Chain");
-                item_array.toString[items_idx] = items_stdToDisplayString;
-                items_idx++;
-            }
-        }
-
-        CURR_ITEM_TOKEN = 0;
-        if (parser_getJsonValue(&CURR_ITEM_TOKEN, JSON_META) == parser_ok) {
-            strcpy(item_array.items[items_idx].key, "Using Gas");
-            item_array.toString[items_idx] = items_gasToDisplayString;
-            items_idx++;
-        }
+        *curr_token_idx = 0;
     }
 
-    for (uint8_t i = 0; i < items_idx; i++) {
+    return items_ok;
+
+}
+
+static items_error_t items_checkTxLengths(uint8_t *items_idx) {
+    for (uint8_t i = 0; i < *items_idx; i++) {
         if (!item_array.items[i].can_display) {
-            strcpy(item_array.items[items_idx].key, "WARNING");
-            item_array.toString[items_idx] = items_txTooLargeToDisplayString;
-            items_idx++;
-            break;
+            strcpy(item_array.items[*items_idx].key, "WARNING");
+            item_array.toString[*items_idx] = items_txTooLargeToDisplayString;
+            (*items_idx)++;
+            return items_ok;
         }
     }
 
-    strcpy(item_array.items[items_idx].key, "Transaction hash");
+    return items_ok;
+}
+
+static items_error_t items_storeHash(uint8_t *items_idx) {
+    strcpy(item_array.items[*items_idx].key, "Transaction hash");
+
     if (blake2b_hash((uint8_t *)parser_getParserTxObj()->tx_json.json.buffer, parser_getParserTxObj()->tx_json.json.bufferLen, hash) != zxerr_ok) {
-        return ;
+        return items_error;
     }
 
     base64_encode(base64_hash, 44, hash, sizeof(hash));
@@ -221,10 +329,14 @@ void items_storeItems() {
         }
     }
 
-    item_array.toString[items_idx] = items_hashToDisplayString;
-    items_idx++;
+    item_array.toString[*items_idx] = items_hashToDisplayString;
+    (*items_idx)++;
 
-    strcpy(item_array.items[items_idx].key, "Sign for Address");
+    return items_ok;
+}
+
+static items_error_t items_storeSignature(uint8_t *items_idx) {
+    strcpy(item_array.items[*items_idx].key, "Sign for Address");
     /*
     Currently launching cpp tests, so this is not available
     uint8_t address[32];
@@ -232,14 +344,10 @@ void items_storeItems() {
     CHECK_ERROR(crypto_fillAddress(address, sizeof(address), &address_size));
     snprintf(outVal, address_size + 1, "%s", address);
     */
-    item_array.toString[items_idx] = items_hashToDisplayString;
-    items_idx++;
+    item_array.toString[*items_idx] = items_hashToDisplayString;
+    (*items_idx)++;
 
-    item_array.numOfItems = items_idx;
-}
-
-uint16_t items_getTotalItems() {
-    return item_array.numOfItems;
+    return items_ok;
 }
 
 static items_error_t items_storeGasItem(uint16_t json_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies) {
@@ -355,7 +463,7 @@ static items_error_t items_storeUnknownItem(parsed_json_t *json_all, uint16_t tr
     return items_ok;
 }
 
-static parser_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
     uint16_t item_token_index = item.json_token_index;
 
@@ -365,43 +473,43 @@ static parser_error_t items_stdToDisplayString(item_t item, char *outVal, uint16
     return parser_ok;
 }
 
-static parser_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
     *outValLen = 1;
     snprintf(outVal, *outValLen, " ");
     return parser_ok;
 }
 
-static parser_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof("UNSAFE TRANSACTION. This transaction's code was not recognized and does not limit capabilities for all signers. Signing this transaction may make arbitrary actions on the chain including loss of all funds.");
-    snprintf(outVal, *outValLen, "UNSAFE TRANSACTION. This transaction's code was not recognized and does not limit capabilities for all signers. Signing this transaction may make arbitrary actions on the chain including loss of all funds.");
+static items_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+    *outValLen = sizeof(WARNING_TEXT);
+    snprintf(outVal, *outValLen, WARNING_TEXT);
     return parser_ok;
 }
 
-static parser_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof("'meta' field of transaction not recognized");
-    snprintf(outVal, *outValLen, "'meta' field of transaction not recognized");
+static items_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+    *outValLen = sizeof(CAUTION_TEXT);
+    snprintf(outVal, *outValLen, CAUTION_TEXT);
     return parser_ok;
 }
 
-static parser_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof("Transaction too large for Ledger to display.  PROCEED WITH GREAT CAUTION.  Do you want to continue?");
-    snprintf(outVal, *outValLen, "Transaction too large for Ledger to display.  PROCEED WITH GREAT CAUTION.  Do you want to continue?");
+static items_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+    *outValLen = sizeof(TX_TOO_LARGE_TEXT);
+    snprintf(outVal, *outValLen, TX_TOO_LARGE_TEXT);
     return parser_ok;
 }
 
-static parser_error_t items_signingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_signingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
     *outValLen = sizeof("Transaction");
     snprintf(outVal, *outValLen, "Transaction");
     return parser_ok;
 }
 
-static parser_error_t items_requiringToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_requiringToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
     *outValLen = sizeof("Capabilities");
     snprintf(outVal, *outValLen, "Capabilities");
     return parser_ok;
 }
 
-static parser_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     char amount[50];
     uint8_t amount_len = 0;
     char to[65];
@@ -414,20 +522,11 @@ static parser_error_t items_transferToDisplayString(item_t item, char *outVal, u
 
     object_get_value(&json_all, item_token_index, "args", &token_index);
 
-    array_get_nth_element(&json_all, token_index, 0, &token_index);
-    strncpy(from, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
-    from_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
-    from[from_len] = '\0';
+    parser_arrayElementToString(token_index, 0, from, &from_len);
 
-    array_get_nth_element(&json_all, token_index, 1, &token_index);
-    strncpy(to, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
-    to_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
-    to[to_len] = '\0';
+    parser_arrayElementToString(token_index, 1, to, &to_len);
 
-    array_get_nth_element(&json_all, token_index, 2, &token_index);
-    strncpy(amount, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
-    amount_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
-    amount[amount_len] = '\0';
+    parser_arrayElementToString(token_index, 2, amount, &amount_len);
 
     *outValLen = amount_len + from_len + to_len + sizeof(" from ") + sizeof(" to ") + 4 * sizeof("\"");
     snprintf(outVal, *outValLen, "%s from \"%s\" to \"%s\"", amount, from, to);
@@ -435,7 +534,7 @@ static parser_error_t items_transferToDisplayString(item_t item, char *outVal, u
     return parser_ok;
 }
 
-static parser_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     char amount[50];
     uint8_t amount_len = 0;
     char to[65];
@@ -450,25 +549,13 @@ static parser_error_t items_crossTransferToDisplayString(item_t item, char *outV
 
     object_get_value(&json_all, item_token_index, "args", &token_index);
 
-    array_get_nth_element(&json_all, token_index, 0, &token_index);
-    strncpy(from, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
-    from_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
-    from[from_len] = '\0';
+    parser_arrayElementToString(token_index, 0, from, &from_len);
 
-    array_get_nth_element(&json_all, token_index, 1, &token_index);
-    strncpy(to, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
-    to_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
-    to[to_len] = '\0';
+    parser_arrayElementToString(token_index, 1, to, &to_len);
 
-    array_get_nth_element(&json_all, token_index, 2, &token_index);
-    strncpy(amount, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
-    amount_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
-    amount[amount_len] = '\0';
+    parser_arrayElementToString(token_index, 2, amount, &amount_len);
 
-    array_get_nth_element(&json_all, token_index, 3, &token_index);
-    strncpy(chain, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
-    chain_len = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
-    chain[chain_len] = '\0';
+    parser_arrayElementToString(token_index, 3, chain, &chain_len);
 
     *outValLen = amount_len + from_len + to_len + chain_len + sizeof("Cross-chain ") + sizeof(" from ") + sizeof(" to ") + 6 * sizeof("\"") + sizeof(" to chain ");
     snprintf(outVal, *outValLen, "Cross-chain %s from \"%s\" to \"%s\" to chain \"%s\"", amount, from, to, chain);
@@ -476,7 +563,7 @@ static parser_error_t items_crossTransferToDisplayString(item_t item, char *outV
     return parser_ok;
 }
 
-static parser_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     uint16_t token_index = 0;
     uint16_t item_token_index = item.json_token_index;
     parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
@@ -490,7 +577,7 @@ static parser_error_t items_rotateToDisplayString(item_t item, char *outVal, uin
     return parser_ok;
 }
 
-static parser_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
     char gasLimit[10];
     uint8_t gasLimit_len = 0;
     char gasPrice[64];
@@ -514,13 +601,13 @@ static parser_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *out
     return parser_ok;
 }
 
-static parser_error_t items_hashToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_hashToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     *outValLen = sizeof(base64_hash);
     snprintf(outVal, *outValLen, "%s", base64_hash);
     return parser_ok;
 }
 
-static parser_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+static items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
     uint8_t len = 0;

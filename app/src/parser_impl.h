@@ -52,9 +52,10 @@ parser_error_t parser_getTransferFrom(char **from, uint16_t *from_len);
 parser_error_t parser_getTransferTo(char **to, uint16_t *to_len);
 parser_error_t parser_getTransferAmount(char **amount, uint16_t *amount_len);
 uint16_t parser_getNumberOfClistElements();
-parser_error_t parser_findKeyInClist(uint16_t key_token_index);
+parser_error_t parser_findPubKeyInClist(uint16_t key_token_index);
 uint16_t parser_getNumberOfTransfers();
 parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key);
+parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, char *outVal, uint8_t *outValLen);
 parser_error_t parser_getGasObject(uint16_t *json_token_index);
 parser_error_t parser_validateMetaField();
 

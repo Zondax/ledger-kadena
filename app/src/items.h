@@ -20,22 +20,26 @@
 #include "parser_common.h"
 #include "json_parser.h"
 
+#define WARNING_TEXT "UNSAFE TRANSACTION. This transaction's code was not recognized and does not limit capabilities for all signers. Signing this transaction may make arbitrary actions on the chain including loss of all funds."
+#define CAUTION_TEXT "'meta' field of transaction not recognized"
+#define TX_TOO_LARGE_TEXT "Transaction too large for Ledger to display.  PROCEED WITH GREAT CAUTION.  Do you want to continue?"
+
 typedef struct {
     char key[25];
     uint16_t json_token_index;
     bool can_display;
 } item_t;
 
-typedef struct {
-    item_t items[20];
-    uint8_t numOfItems;
-    parser_error_t (*toString[20])(item_t item, char *outVal, uint16_t *outValLen);
-} item_array_t;
-
 typedef enum {
     items_ok,
     items_error,
 } items_error_t;
+
+typedef struct {
+    item_t items[20];
+    uint8_t numOfItems;
+    items_error_t (*toString[20])(item_t item, char *outVal, uint16_t *outValLen);
+} item_array_t;
 
 void items_initItems();
 void items_storeItems();
