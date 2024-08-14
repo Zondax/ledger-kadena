@@ -23,13 +23,19 @@
 typedef struct {
     char key[25];
     uint16_t json_token_index;
-    parser_error_t (*toString)(uint16_t token_index, char *outVal, uint16_t *outValLen);
+    bool can_display;
 } item_t;
 
 typedef struct {
     item_t items[20];
     uint8_t numOfItems;
+    parser_error_t (*toString[20])(item_t item, char *outVal, uint16_t *outValLen);
 } item_array_t;
+
+typedef enum {
+    items_ok,
+    items_error,
+} items_error_t;
 
 void items_initItems();
 void items_storeItems();

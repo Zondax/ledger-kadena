@@ -68,8 +68,13 @@ parser_error_t parser_findKeyInClist(uint16_t key_token_index) {
         CHECK_ERROR(array_get_element_count(json_all, args_token_index, &number_of_args));
         for (uint16_t j = 0; j < number_of_args; j++) {
             array_get_nth_element(json_all, args_token_index, j, &token_index);
+            uint8_t offset = 0;
+            // Take into account the "k:" notation for the key
+            if (MEMCMP("k:", json_all->buffer + json_all->tokens[token_index].start, 2) == 0) {
+                offset = 2;
+            }
             if (MEMCMP(json_all->buffer + json_all->tokens[key_token_index].start,
-                json_all->buffer + json_all->tokens[token_index].start,
+                json_all->buffer + json_all->tokens[token_index].start + offset,
                 json_all->tokens[key_token_index].end - json_all->tokens[key_token_index].start) == 0) {
                 return parser_ok;
             }
@@ -79,14 +84,13 @@ parser_error_t parser_findKeyInClist(uint16_t key_token_index) {
     return parser_no_data;
 }
 
-
 parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key) {
     parsed_json_t json_obj;
     uint16_t token_index = 0;
 
     CHECK_ERROR(object_get_value(&parser_tx_obj.tx_json.json, *json_token_index, key, &token_index));
 
-    json_parse(&json_obj, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[token_index].start, parser_tx_obj.tx_json.json.tokens[token_index].end - parser_tx_obj.tx_json.json.tokens[token_index].start);
+    CHECK_ERROR(json_parse(&json_obj, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[token_index].start, parser_tx_obj.tx_json.json.tokens[token_index].end - parser_tx_obj.tx_json.json.tokens[token_index].start));
 
     if (MEMCMP("null", json_obj.buffer, json_obj.bufferLen) == 0) {
         return parser_no_data;
@@ -116,10 +120,36 @@ parser_error_t parser_getGasObject(uint16_t *json_token_index) {
     return parser_no_data;
 }
 
-parser_error_t parser_getChainId(parsed_json_t *json_obj) {
-    uint16_t token_index = 0;
-    object_get_value(&parser_tx_obj.tx_json.json, 0, "chainId", &token_index);
-    json_parse(json_obj, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[token_index].start, parser_tx_obj.tx_json.json.tokens[token_index].end - parser_tx_obj.tx_json.json.tokens[token_index].start);
+parser_error_t parser_validateMetaField() {
+    char *keywords[20] = {
+        JSON_CREATION_TIME,
+        JSON_TTL,
+        JSON_GAS_LIMIT,
+        JSON_CHAIN_ID,
+        JSON_GAS_PRICE,
+        JSON_SENDER
+    };
+    char meta_curr_key[20];
+    uint16_t meta_token_index = 0;
+    uint16_t meta_num_elements = 0;
+    uint16_t key_token_idx = 0;
+
+    if (parser_getJsonValue(&meta_token_index, JSON_META) == parser_ok) {
+        object_get_element_count(&parser_tx_obj.tx_json.json, meta_token_index, &meta_num_elements);
+        for (uint16_t i = 0; i < meta_num_elements; i++) {
+            object_get_nth_key(&parser_tx_obj.tx_json.json, meta_token_index, i, &key_token_idx);
+
+            MEMCPY(meta_curr_key, parser_tx_obj.tx_json.json.buffer + parser_tx_obj.tx_json.json.tokens[key_token_idx].start,
+                parser_tx_obj.tx_json.json.tokens[key_token_idx].end - parser_tx_obj.tx_json.json.tokens[key_token_idx].start);
+            meta_curr_key[parser_tx_obj.tx_json.json.tokens[key_token_idx].end - parser_tx_obj.tx_json.json.tokens[key_token_idx].start] = '\0';
+
+            if (strcmp(keywords[i], meta_curr_key) != 0) {
+                return parser_invalid_meta_field;
+            }
+
+            MEMZERO(meta_curr_key, sizeof(meta_curr_key));
+        }
+    }
 
     return parser_ok;
 }

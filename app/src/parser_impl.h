@@ -27,14 +27,17 @@ extern "C" {
 
 #define JSON_NETWORK_ID     "networkId"
 #define JSON_META           "meta"
-#define JSON_SENDER         "sender"
-#define JSON_CHAIN_ID       "chainId"
-#define JSON_GAS_LIMIT      "gasLimit"
-#define JSON_GAS_PRICE      "gasPrice"
 #define JSON_SIGNERS        "signers"
+#define JSON_PUBKEY         "pubKey"
 #define JSON_CLIST          "clist"
 #define JSON_ARGS           "args"
 #define JSON_NAME           "name"
+#define JSON_CREATION_TIME  "creationTime"
+#define JSON_TTL            "ttl"
+#define JSON_CHAIN_ID       "chainId"
+#define JSON_GAS_LIMIT      "gasLimit"
+#define JSON_GAS_PRICE      "gasPrice"
+#define JSON_SENDER         "sender"
 typedef struct {
     const uint8_t *buffer;
     uint16_t bufferLen;
@@ -53,7 +56,7 @@ parser_error_t parser_findKeyInClist(uint16_t key_token_index);
 uint16_t parser_getNumberOfTransfers();
 parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key);
 parser_error_t parser_getGasObject(uint16_t *json_token_index);
-parser_error_t parser_getChainId(parsed_json_t *json_obj);
+parser_error_t parser_validateMetaField();
 
 #ifdef __cplusplus
 }
