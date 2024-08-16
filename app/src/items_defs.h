@@ -17,11 +17,20 @@
 
 #include <zxmacros.h>
 #include "zxtypes.h"
-#include "parser_common.h"
-#include "json_parser.h"
-#include "items_defs.h"
 
-void items_initItems();
-void items_storeItems();
-uint16_t items_getTotalItems();
-item_array_t *items_getItemArray();
+typedef struct {
+    char key[25];
+    uint16_t json_token_index;
+    bool_t can_display;
+} item_t;
+
+typedef enum {
+    items_ok,
+    items_error,
+} items_error_t;
+
+typedef struct {
+    item_t items[20];
+    uint8_t numOfItems;
+    items_error_t (*toString[20])(item_t item, char *outVal, uint16_t *outValLen);
+} item_array_t;
