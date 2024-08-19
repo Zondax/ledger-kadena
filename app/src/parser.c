@@ -109,6 +109,5 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     ITEMS_TO_PARSER_ERROR(item_array->toString[displayIdx](item_array->items[displayIdx], tempVal, &tempValLen));
     pageString(outVal, outValLen, tempVal, pageIdx, pageCount);
 
-
     return parser_ok;
 }

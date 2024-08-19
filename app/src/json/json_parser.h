@@ -27,7 +27,7 @@
 // Limit depending on target
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX)
 #undef MAX_NUMBER_OF_TOKENS
-#define MAX_NUMBER_OF_TOKENS    10 // TODO : Check how many are actually needed, currently made to fit in memory.
+#define MAX_NUMBER_OF_TOKENS    120
 #endif
 
 #if defined(TARGET_STAX) || defined(TARGET_FLEX)

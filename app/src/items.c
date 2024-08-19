@@ -32,7 +32,7 @@ static items_error_t items_storeChainId(uint8_t *items_idx);
 static items_error_t items_storeUsingGas(uint8_t *items_idx);
 static items_error_t items_checkTxLengths(uint8_t *items_idx);
 static items_error_t items_storeHash(uint8_t *items_idx);
-static items_error_t items_storeSignature(uint8_t *items_idx);
+static items_error_t items_storeSignForAddr(uint8_t *items_idx);
 static items_error_t items_storeGasItem(uint16_t json_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies);
 static items_error_t items_storeTransferItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t items_idx, uint8_t *num_of_transfers, uint8_t *unknown_capabitilies);
 static items_error_t items_storeCrossTransferItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t items_idx, uint8_t *num_of_transfers, uint8_t *unknown_capabitilies);
@@ -41,7 +41,7 @@ static items_error_t items_storeUnknownItem(parsed_json_t *json_all, uint16_t tr
 
 #define MAX_ITEM_LENGTH_TO_DISPLAY 1000 // TODO : Check other apps to find this number
 
-item_array_t item_array;
+item_array_t item_array = {0};
 
 uint8_t hash[BLAKE2B_HASH_SIZE] = {0};
 char base64_hash[44];
@@ -61,7 +61,6 @@ item_array_t *items_getItemArray() {
 void items_storeItems() {
     uint8_t items_idx = 0;
     uint8_t unknown_capabitilies = 1;
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
 
     items_storeSigningTransaction(&items_idx);
 
@@ -89,7 +88,7 @@ void items_storeItems() {
 
     items_storeHash(&items_idx);
 
-    items_storeSignature(&items_idx);
+    items_storeSignForAddr(&items_idx);
 
     item_array.numOfItems = items_idx;
 }
@@ -324,16 +323,9 @@ static items_error_t items_storeHash(uint8_t *items_idx) {
     return items_ok;
 }
 
-static items_error_t items_storeSignature(uint8_t *items_idx) {
+static items_error_t items_storeSignForAddr(uint8_t *items_idx) {
     strcpy(item_array.items[*items_idx].key, "Sign for Address");
-    /*
-    Currently launching cpp tests, so this is not available
-    uint8_t address[32];
-    uint16_t address_size;
-    CHECK_ERROR(crypto_fillAddress(address, sizeof(address), &address_size));
-    snprintf(outVal, address_size + 1, "%s", address);
-    */
-    item_array.toString[*items_idx] = items_hashToDisplayString;
+    item_array.toString[*items_idx] = items_signForAddrToDisplayString;
     (*items_idx)++;
 
     return items_ok;
@@ -342,10 +334,10 @@ static items_error_t items_storeSignature(uint8_t *items_idx) {
 static items_error_t items_storeGasItem(uint16_t json_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
 
-    object_get_value(&json_all, json_token_index, "args", &token_index);
-    array_get_element_count(&json_all, token_index, &args_count);
+    object_get_value(json_all, json_token_index, "args", &token_index);
+    array_get_element_count(json_all, token_index, &args_count);
 
     if (args_count > 0) {
         snprintf(item_array.items[items_idx].key, sizeof(item_array.items[items_idx].key), "Unknown Capability %d", *unknown_capabitilies);

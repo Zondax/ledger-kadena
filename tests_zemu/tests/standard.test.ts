@@ -179,35 +179,37 @@ describe('Standard', function () {
     }
   })
 
-  // test.concurrent.each(models)('sign tx1 normal', async function (m) {
-  //   const sim = new Zemu(m.path)
-  //   try {
-  //     await sim.start({ ...defaultOptions, model: m.name })
-  //     const app = new KadenaApp(sim.getTransport())
+  /*
+  test.concurrent.each(models)('sign tx1 normal', async function (m) {
+    const sim = new Zemu(m.path)
+    try {
+       await sim.start({ ...defaultOptions, model: m.name })
+       const app = new KadenaApp(sim.getTransport())
 
-  //     const txBlob = Buffer.from(txBlobExample)
-  //     const responseAddr = await app.getAddressAndPubKey(accountId)
-  //     const pubKey = responseAddr.publicKey
+       const txBlob = Buffer.from(txBlobExample)
+       const responseAddr = await app.getAddressAndPubKey(accountId)
+       const pubKey = responseAddr.publicKey
 
-  //     // do not wait here.. we need to navigate
-  //     const signatureRequest = app.sign(accountId, txBlob)
+       // do not wait here.. we need to navigate
+       const signatureRequest = app.sign(accountId, txBlob)
 
-  //     // Wait until we are not in the main menu
-  //     await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-  //     await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_asset_freeze`,50000)
+       // Wait until we are not in the main menu
+       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_asset_freeze`,50000)
 
-  //     const signatureResponse = await signatureRequest
-  //     console.log(signatureResponse)
+       const signatureResponse = await signatureRequest
+       console.log(signatureResponse)
 
-  //     expect(signatureResponse.return_code).toEqual(0x9000)
-  //     expect(signatureResponse.error_message).toEqual('No errors')
+       expect(signatureResponse.return_code).toEqual(0x9000)
+       expect(signatureResponse.error_message).toEqual('No errors')
 
-  //     // Now verify the signature
-  //     const prehash = Buffer.concat([Buffer.from('TX'), txBlob]);
-  //     const valid = ed25519.verify(signatureResponse.signature, prehash, pubKey)
-  //     expect(valid).toEqual(true)
-  //   } finally {
-  //     await sim.close()
-  //   }
-  // })
+       // Now verify the signature
+       const prehash = Buffer.concat([Buffer.from('TX'), txBlob]);
+       const valid = ed25519.verify(signatureResponse.signature, prehash, pubKey)
+       expect(valid).toEqual(true)
+     } finally {
+       await sim.close()
+     }
+   })
+     */
 })

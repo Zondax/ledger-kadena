@@ -16,15 +16,16 @@
 
 #include "items_format.h"
 #include "parser.h"
+#include "crypto.h"
 
 extern char base64_hash[44];
 
 items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t item_token_index = item.json_token_index;
 
-    *outValLen = json_all.tokens[item_token_index].end - json_all.tokens[item_token_index].start + 1;
-    snprintf(outVal, *outValLen, "%s", json_all.buffer + json_all.tokens[item_token_index].start);
+    *outValLen = json_all->tokens[item_token_index].end - json_all->tokens[item_token_index].start + 1;
+    snprintf(outVal, *outValLen, "%s", json_all->buffer + json_all->tokens[item_token_index].start);
 
     return items_ok;
 }
@@ -73,10 +74,10 @@ items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t 
     char from[65];
     uint8_t from_len = 0;
     uint16_t token_index = 0;
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t item_token_index = item.json_token_index;
 
-    object_get_value(&json_all, item_token_index, "args", &token_index);
+    object_get_value(json_all, item_token_index, "args", &token_index);
 
     PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, from, &from_len));
 
@@ -100,10 +101,10 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
     char chain[3];
     uint8_t chain_len = 0;
     uint16_t token_index = 0;
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t item_token_index = item.json_token_index;
 
-    object_get_value(&json_all, item_token_index, "args", &token_index);
+    object_get_value(json_all, item_token_index, "args", &token_index);
 
     PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, from, &from_len));
 
@@ -122,13 +123,13 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
 items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     uint16_t token_index = 0;
     uint16_t item_token_index = item.json_token_index;
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
 
-    object_get_value(&json_all, item_token_index, "args", &token_index);
-    array_get_nth_element(&json_all, token_index, 0, &token_index);
+    object_get_value(json_all, item_token_index, "args", &token_index);
+    array_get_nth_element(json_all, token_index, 0, &token_index);
 
-    *outValLen = json_all.tokens[token_index].end - json_all.tokens[token_index].start + sizeof("\"\"");
-    snprintf(outVal, *outValLen, "\"%s\"", json_all.buffer + json_all.tokens[token_index].start);
+    *outValLen = json_all->tokens[token_index].end - json_all->tokens[token_index].start + sizeof("\"\"");
+    snprintf(outVal, *outValLen, "\"%s\"", json_all->buffer + json_all->tokens[token_index].start);
 
     return items_ok;
 }
@@ -138,18 +139,18 @@ items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uin
     uint8_t gasLimit_len = 0;
     char gasPrice[64];
     uint8_t gasPrice_len = 0;
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t item_token_index = item.json_token_index;
     uint16_t meta_token_index = item_token_index;
 
     parser_getJsonValue(&item_token_index, JSON_GAS_LIMIT);
-    gasLimit_len = json_all.tokens[item_token_index].end - json_all.tokens[item_token_index].start + 1;
-    snprintf(gasLimit, gasLimit_len, "%s", json_all.buffer + json_all.tokens[item_token_index].start);
+    gasLimit_len = json_all->tokens[item_token_index].end - json_all->tokens[item_token_index].start + 1;
+    snprintf(gasLimit, gasLimit_len, "%s", json_all->buffer + json_all->tokens[item_token_index].start);
 
     item_token_index = meta_token_index;
     parser_getJsonValue(&item_token_index, JSON_GAS_PRICE);
-    gasPrice_len = json_all.tokens[item_token_index].end - json_all.tokens[item_token_index].start + 1;
-    snprintf(gasPrice, gasPrice_len, "%s", json_all.buffer + json_all.tokens[item_token_index].start);
+    gasPrice_len = json_all->tokens[item_token_index].end - json_all->tokens[item_token_index].start + 1;
+    snprintf(gasPrice, gasPrice_len, "%s", json_all->buffer + json_all->tokens[item_token_index].start);
 
     *outValLen = gasLimit_len + gasPrice_len + sizeof("at most ") + sizeof(" at price ");
     snprintf(outVal, *outValLen, "at most %s at price %s", gasLimit, gasPrice);
@@ -163,17 +164,26 @@ items_error_t items_hashToDisplayString(__Z_UNUSED item_t item, char *outVal, ui
     return items_ok;
 }
 
+items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+    uint8_t address[65];
+    uint16_t address_size;
+    CHECK_ERROR(crypto_fillAddress(address, sizeof(address), &address_size));
+    *outValLen = address_size;
+    snprintf(outVal, address_size, "%s", address);
+    return items_ok;
+}
+
 items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
     uint8_t len = 0;
     uint8_t outVal_idx= 0;
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t item_token_index = item.json_token_index;
 
-    object_get_value(&json_all, item_token_index, "name", &token_index);
-    len = json_all.tokens[token_index].end - json_all.tokens[token_index].start + sizeof("name: ");
-    snprintf(outVal, len, "name: %s", json_all.buffer + json_all.tokens[token_index].start);
+    object_get_value(json_all, item_token_index, "name", &token_index);
+    len = json_all->tokens[token_index].end - json_all->tokens[token_index].start + sizeof("name: ");
+    snprintf(outVal, len, "name: %s", json_all->buffer + json_all->tokens[token_index].start);
     outVal_idx += len;
 
     // Remove null terminator
@@ -190,21 +200,21 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
         return items_ok;
     }
 
-    object_get_value(&json_all, item_token_index, "args", &token_index);
-    array_get_element_count(&json_all, token_index, &args_count);
+    object_get_value(json_all, item_token_index, "args", &token_index);
+    array_get_element_count(json_all, token_index, &args_count);
 
 
     if (args_count) {
         uint16_t args_token_index = 0;
         for (uint8_t i = 0; i < args_count - 1; i++) {
-            array_get_nth_element(&json_all, token_index, i, &args_token_index);
-            if (json_all.tokens[args_token_index].type == JSMN_STRING) {
+            array_get_nth_element(json_all, token_index, i, &args_token_index);
+            if (json_all->tokens[args_token_index].type == JSMN_STRING) {
                 // Strings go in between double quotes
-                len = json_all.tokens[args_token_index].end - json_all.tokens[args_token_index].start + sizeof("arg X: \"\",");
-                snprintf(outVal + outVal_idx, len, "arg %d: \"%s\",", i + 1, json_all.buffer + json_all.tokens[args_token_index].start);
+                len = json_all->tokens[args_token_index].end - json_all->tokens[args_token_index].start + sizeof("arg X: \"\",");
+                snprintf(outVal + outVal_idx, len, "arg %d: \"%s\",", i + 1, json_all->buffer + json_all->tokens[args_token_index].start);
             } else {
-                len = json_all.tokens[args_token_index].end - json_all.tokens[args_token_index].start + sizeof("arg X: ,");
-                snprintf(outVal + outVal_idx, len, "arg %d: %s,", i + 1, json_all.buffer + json_all.tokens[args_token_index].start);
+                len = json_all->tokens[args_token_index].end - json_all->tokens[args_token_index].start + sizeof("arg X: ,");
+                snprintf(outVal + outVal_idx, len, "arg %d: %s,", i + 1, json_all->buffer + json_all->tokens[args_token_index].start);
             }
             outVal_idx += len;
 
@@ -213,13 +223,13 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
         }
         
         // Last arg (without comma)
-        array_get_nth_element(&json_all, token_index, args_count - 1, &args_token_index);
-        if (json_all.tokens[args_token_index].type == JSMN_STRING) {
-            len = json_all.tokens[args_token_index].end - json_all.tokens[args_token_index].start + sizeof("arg X: \"\"");
-            snprintf(outVal + outVal_idx, len, "arg %d: \"%s\"", args_count, json_all.buffer + json_all.tokens[args_token_index].start);
+        array_get_nth_element(json_all, token_index, args_count - 1, &args_token_index);
+        if (json_all->tokens[args_token_index].type == JSMN_STRING) {
+            len = json_all->tokens[args_token_index].end - json_all->tokens[args_token_index].start + sizeof("arg X: \"\"");
+            snprintf(outVal + outVal_idx, len, "arg %d: \"%s\"", args_count, json_all->buffer + json_all->tokens[args_token_index].start);
         } else {
-            len = json_all.tokens[args_token_index].end - json_all.tokens[args_token_index].start + sizeof("arg X: ");
-            snprintf(outVal + outVal_idx, len, "arg %d: %s", args_count, json_all.buffer + json_all.tokens[args_token_index].start);
+            len = json_all->tokens[args_token_index].end - json_all->tokens[args_token_index].start + sizeof("arg X: ");
+            snprintf(outVal + outVal_idx, len, "arg %d: %s", args_count, json_all->buffer + json_all->tokens[args_token_index].start);
         }
         outVal_idx += len;
     } else {

@@ -18,8 +18,8 @@
 #include <zxmacros.h>
 #include "zxtypes.h"
 #include "parser_common.h"
-#include "json_parser.h"
 #include "items_defs.h"
+#include "json_parser.h"
 
 void items_initItems();
 void items_storeItems();
