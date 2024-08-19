@@ -54,9 +54,6 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
 }
 
 parser_error_t parser_validate(parser_context_t *ctx) {
-
-    // TODO: validate the tx (JSON validation)
-
     // Iterate through all items to check that all can be shown and are valid
     uint8_t numItems = 0;
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
@@ -100,6 +97,8 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     *pageCount = 1;
     uint8_t numItems = 0;
     item_array_t *item_array = items_getItemArray();
+    char tempVal[300] = {0};
+    uint16_t tempValLen = 0;
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
     CHECK_APP_CANARY()
 
@@ -107,7 +106,9 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
 
     snprintf(outKey, outKeyLen, "%s", item_array->items[displayIdx].key);
-    item_array->toString[displayIdx](item_array->items[displayIdx], outVal, &outValLen);
+    ITEMS_TO_PARSER_ERROR(item_array->toString[displayIdx](item_array->items[displayIdx], tempVal, &tempValLen));
+    pageString(outVal, outValLen, tempVal, pageIdx, pageCount);
+
 
     return parser_ok;
 }

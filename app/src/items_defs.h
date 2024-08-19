@@ -18,6 +18,22 @@
 #include <zxmacros.h>
 #include "zxtypes.h"
 
+#define MAX_NUMBER_OF_ITEMS 25
+
+#define PARSER_TO_ITEMS_ERROR(__CALL)                   \
+    {                                         \
+        parser_error_t __err = __CALL;        \
+        CHECK_APP_CANARY()                    \
+        if (__err != parser_ok) return items_error; \
+    }
+
+#define ITEMS_TO_PARSER_ERROR(__CALL)                   \
+    {                                         \
+        items_error_t __err = __CALL;        \
+        CHECK_APP_CANARY()                    \
+        if (__err != items_ok) return parser_unexpected_error; \
+    }
+
 typedef struct {
     char key[25];
     uint16_t json_token_index;
@@ -30,7 +46,7 @@ typedef enum {
 } items_error_t;
 
 typedef struct {
-    item_t items[20];
+    item_t items[MAX_NUMBER_OF_ITEMS];
     uint8_t numOfItems;
-    items_error_t (*toString[20])(item_t item, char *outVal, uint16_t *outValLen);
+    items_error_t (*toString[MAX_NUMBER_OF_ITEMS])(item_t item, char *outVal, uint16_t *outValLen);
 } item_array_t;

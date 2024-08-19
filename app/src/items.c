@@ -59,10 +59,9 @@ item_array_t *items_getItemArray() {
 }
 
 void items_storeItems() {
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
     uint8_t items_idx = 0;
     uint8_t unknown_capabitilies = 1;
-    uint16_t token_index = 0;
+    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
 
     items_storeSigningTransaction(&items_idx);
 
@@ -108,7 +107,9 @@ static items_error_t items_storeSigningTransaction(uint8_t *items_idx) {
 }
 
 static items_error_t items_storeNetwork(uint8_t *items_idx) {
-    if (parser_getJsonValue(&item_array.items[*items_idx].json_token_index, JSON_NETWORK_ID) == parser_ok) {
+    uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
+
+    if (parser_getJsonValue(curr_token_idx, JSON_NETWORK_ID) == parser_ok) {
         strcpy(item_array.items[*items_idx].key, "On Network");
         item_array.toString[*items_idx] = items_stdToDisplayString;
         (*items_idx)++;
@@ -126,11 +127,11 @@ static items_error_t items_storeRequiringCapabilities(uint8_t *items_idx) {
 }
 
 static items_error_t items_storeKey(uint8_t *items_idx) {
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
 
     if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
-        array_get_nth_element(&json_all, *curr_token_idx, 0, curr_token_idx);
+        array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx);
         if (parser_getJsonValue(curr_token_idx, JSON_PUBKEY) == parser_ok) {
             strcpy(item_array.items[*items_idx].key, "Of Key");
             item_array.toString[*items_idx] = items_stdToDisplayString;
@@ -142,20 +143,20 @@ static items_error_t items_storeKey(uint8_t *items_idx) {
 }
 
 static items_error_t items_validateSigners(uint8_t *items_idx) {
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
     uint16_t token_index = 0;
 
     if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
-        array_get_nth_element(&json_all, *curr_token_idx, 0, curr_token_idx);
+        array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx);
         if (parser_getJsonValue(curr_token_idx, JSON_CLIST) == parser_ok) {
             uint16_t clist_token_index = *curr_token_idx;
 
             for (uint8_t i = 0; i < parser_getNumberOfClistElements(); i++) {
-                if (array_get_nth_element(&json_all, clist_token_index, i, &token_index) == parser_ok) {
+                if (array_get_nth_element(json_all, clist_token_index, i, &token_index) == parser_ok) {
                     uint16_t name_token_index = 0;
-                    if (object_get_value(&json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
-                        if (MEMCMP("coin.TRANSFER", json_all.buffer + json_all.tokens[name_token_index].start,
+                    if (object_get_value(json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
+                        if (MEMCMP("coin.TRANSFER", json_all->buffer + json_all->tokens[name_token_index].start,
                                 sizeof("coin.TRANSFER") - 1) == 0) {
                             if (parser_findPubKeyInClist(item_array.items[*items_idx - 1].json_token_index) == parser_ok) {
                                 item_array.items[*items_idx].json_token_index = 0;
@@ -180,11 +181,11 @@ static items_error_t items_validateSigners(uint8_t *items_idx) {
 }
 
 static items_error_t items_storePayingGas(uint8_t *items_idx, uint8_t *unknown_capabitilies) {
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
 
     if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
-        array_get_nth_element(&json_all, *curr_token_idx, 0, curr_token_idx);
+        array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx);
         if (parser_getJsonValue(curr_token_idx, JSON_CLIST) == parser_ok) {
             parser_getGasObject(curr_token_idx);
             items_storeGasItem(*curr_token_idx, *items_idx, unknown_capabitilies);
@@ -198,39 +199,39 @@ static items_error_t items_storePayingGas(uint8_t *items_idx, uint8_t *unknown_c
 }
 
 static items_error_t items_storeAllTransfers(uint8_t *items_idx, uint8_t *unknown_capabitilies) {
-    parsed_json_t json_all = parser_getParserTxObj()->tx_json.json;
+    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
     uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
     uint16_t token_index = 0;
     uint8_t num_of_transfers = 1;
 
     if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
-        array_get_nth_element(&json_all, *curr_token_idx, 0, curr_token_idx);
+        array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx);
         if (parser_getJsonValue(curr_token_idx, JSON_CLIST) == parser_ok) {
             uint16_t clist_token_index = *curr_token_idx;
             for (uint8_t i = 0; i < parser_getNumberOfClistElements(); i++) {
-                if (array_get_nth_element(&json_all, clist_token_index, i, &token_index) == parser_ok) {
+                if (array_get_nth_element(json_all, clist_token_index, i, &token_index) == parser_ok) {
                     uint16_t name_token_index = 0;
-                    if (object_get_value(&json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
-                        if (MEMCMP("coin.TRANSFER_XCHAIN", json_all.buffer + json_all.tokens[name_token_index].start,
+                    if (object_get_value(json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
+                        if (MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + json_all->tokens[name_token_index].start,
                                 sizeof("coin.TRANSFER_XCHAIN") - 1) == 0) {
                             *curr_token_idx = token_index;
-                            items_storeCrossTransferItem(&json_all, token_index, *items_idx, &num_of_transfers, unknown_capabitilies);
+                            items_storeCrossTransferItem(json_all, token_index, *items_idx, &num_of_transfers, unknown_capabitilies);
                             (*items_idx)++;
-                        } else if (MEMCMP("coin.TRANSFER", json_all.buffer + json_all.tokens[name_token_index].start,
+                        } else if (MEMCMP("coin.TRANSFER", json_all->buffer + json_all->tokens[name_token_index].start,
                                 sizeof("coin.TRANSFER") - 1) == 0) {
                             *curr_token_idx = token_index;
-                            items_storeTransferItem(&json_all, token_index, *items_idx, &num_of_transfers, unknown_capabitilies);
+                            items_storeTransferItem(json_all, token_index, *items_idx, &num_of_transfers, unknown_capabitilies);
                             (*items_idx)++;
-                        } else if (MEMCMP("coin.ROTATE", json_all.buffer + json_all.tokens[name_token_index].start,
+                        } else if (MEMCMP("coin.ROTATE", json_all->buffer + json_all->tokens[name_token_index].start,
                                 sizeof("coin.ROTATE") - 1) == 0) {
                             *curr_token_idx = token_index;
-                            items_storeRotateItem(&json_all, token_index, *items_idx, unknown_capabitilies);
+                            items_storeRotateItem(json_all, token_index, *items_idx, unknown_capabitilies);
                             (*items_idx)++;
-                        } else if (MEMCMP("coin.GAS", json_all.buffer + json_all.tokens[name_token_index].start,
+                        } else if (MEMCMP("coin.GAS", json_all->buffer + json_all->tokens[name_token_index].start,
                                 sizeof("coin.GAS") - 1) != 0) {
                             // Any other case that's not coin.GAS
                             *curr_token_idx = token_index;
-                            items_storeUnknownItem(&json_all, token_index, *items_idx, unknown_capabitilies);
+                            items_storeUnknownItem(json_all, token_index, *items_idx, unknown_capabitilies);
                             item_array.toString[*items_idx] = items_unknownCapabilityToDisplayString;
                             (*items_idx)++;
                         }

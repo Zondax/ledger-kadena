@@ -105,10 +105,12 @@ parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t e
     uint16_t token_index = 0;
     parsed_json_t json_all = parser_tx_obj.tx_json.json;
 
-    array_get_nth_element(&json_all, json_token_index, element_idx, &token_index);
+    CHECK_ERROR(array_get_nth_element(&json_all, json_token_index, element_idx, &token_index));
     strncpy(outVal, json_all.buffer + json_all.tokens[token_index].start, json_all.tokens[token_index].end - json_all.tokens[token_index].start);
     *outValLen = json_all.tokens[token_index].end - json_all.tokens[token_index].start;
     outVal[*outValLen] = '\0';
+
+    return parser_ok;
 }
 
 parser_error_t parser_getGasObject(uint16_t *json_token_index) {
@@ -117,9 +119,9 @@ parser_error_t parser_getGasObject(uint16_t *json_token_index) {
     uint16_t name_token_index = 0;
     
     for (uint16_t i = 0; i < parser_getNumberOfClistElements(); i++) {
-        array_get_nth_element(json_all, *json_token_index, i, &token_index);
+        CHECK_ERROR(array_get_nth_element(json_all, *json_token_index, i, &token_index));
 
-        object_get_value(json_all, token_index, JSON_NAME, &name_token_index);
+        CHECK_ERROR(object_get_value(json_all, token_index, JSON_NAME, &name_token_index));
         if (MEMCMP("coin.GAS", json_all->buffer + json_all->tokens[name_token_index].start,
             json_all->tokens[name_token_index].end - json_all->tokens[name_token_index].start) == 0) {
             *json_token_index = token_index;
@@ -131,7 +133,7 @@ parser_error_t parser_getGasObject(uint16_t *json_token_index) {
 }
 
 parser_error_t parser_validateMetaField() {
-    char *keywords[20] = {
+    const char *keywords[20] = {
         JSON_CREATION_TIME,
         JSON_TTL,
         JSON_GAS_LIMIT,

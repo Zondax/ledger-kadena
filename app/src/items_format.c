@@ -78,11 +78,11 @@ items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t 
 
     object_get_value(&json_all, item_token_index, "args", &token_index);
 
-    parser_arrayElementToString(token_index, 0, from, &from_len);
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, from, &from_len));
 
-    parser_arrayElementToString(token_index, 1, to, &to_len);
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, to, &to_len));
 
-    parser_arrayElementToString(token_index, 2, amount, &amount_len);
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, amount, &amount_len));
 
     *outValLen = amount_len + from_len + to_len + sizeof(" from ") + sizeof(" to ") + 4 * sizeof("\"");
     snprintf(outVal, *outValLen, "%s from \"%s\" to \"%s\"", amount, from, to);
@@ -105,13 +105,13 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
 
     object_get_value(&json_all, item_token_index, "args", &token_index);
 
-    parser_arrayElementToString(token_index, 0, from, &from_len);
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, from, &from_len));
 
-    parser_arrayElementToString(token_index, 1, to, &to_len);
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, to, &to_len));
 
-    parser_arrayElementToString(token_index, 2, amount, &amount_len);
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, amount, &amount_len));
 
-    parser_arrayElementToString(token_index, 3, chain, &chain_len);
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 3, chain, &chain_len));
 
     *outValLen = amount_len + from_len + to_len + chain_len + sizeof("Cross-chain ") + sizeof(" from ") + sizeof(" to ") + 6 * sizeof("\"") + sizeof(" to chain ");
     snprintf(outVal, *outValLen, "Cross-chain %s from \"%s\" to \"%s\" to chain \"%s\"", amount, from, to, chain);
@@ -157,7 +157,7 @@ items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uin
     return items_ok;
 }
 
-items_error_t items_hashToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_hashToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
     *outValLen = sizeof(base64_hash);
     snprintf(outVal, *outValLen, "%s", base64_hash);
     return items_ok;
