@@ -27,13 +27,9 @@
 // Limit depending on target
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX)
 #undef MAX_NUMBER_OF_TOKENS
-#define MAX_NUMBER_OF_TOKENS    120
+#define MAX_NUMBER_OF_TOKENS    110
 #endif
 
-#if defined(TARGET_STAX) || defined(TARGET_FLEX)
-#undef MAX_NUMBER_OF_TOKENS
-#define MAX_NUMBER_OF_TOKENS    600
-#endif
 // Context that keeps all the parsed data together. That includes:
 //  - parsed json tokens
 //  - re-created SendMsg struct with indices pointing to tokens in parsed json

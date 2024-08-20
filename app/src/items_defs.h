@@ -18,7 +18,7 @@
 #include <zxmacros.h>
 #include "zxtypes.h"
 
-#define MAX_NUMBER_OF_ITEMS 25
+#define MAX_NUMBER_OF_ITEMS 22
 
 #define PARSER_TO_ITEMS_ERROR(__CALL)                   \
     {                                         \
@@ -35,7 +35,7 @@
     }
 
 typedef struct {
-    char key[25];
+    char key[23];
     uint16_t json_token_index;
     bool_t can_display;
 } item_t;
