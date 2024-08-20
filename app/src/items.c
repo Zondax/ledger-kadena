@@ -324,10 +324,11 @@ static items_error_t items_storeHash(uint8_t *items_idx) {
 }
 
 static items_error_t items_storeSignForAddr(uint8_t *items_idx) {
+#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
     strcpy(item_array.items[*items_idx].key, "Sign for Address");
     item_array.toString[*items_idx] = items_signForAddrToDisplayString;
     (*items_idx)++;
-
+#endif
     return items_ok;
 }
 

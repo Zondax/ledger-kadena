@@ -16,7 +16,7 @@
 
 import Zemu, { ButtonKind, zondaxMainmenuNavigation, isTouchDevice } from '@zondax/zemu'
 import { KadenaApp } from '@zondax/ledger-kadena'
-import { PATH, defaultOptions, models, txBlobExample } from './common'
+import { PATH, defaultOptions, models, simpleTxNormal } from './common'
 import { blake2bFinal, blake2bInit, blake2bUpdate } from 'blakejs'
 
 // @ts-expect-error
@@ -153,7 +153,7 @@ describe('Standard', function () {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new KadenaApp(sim.getTransport())
 
-      const txBlob = Buffer.from(txBlobExample)
+      const txBlob = Buffer.from(simpleTxNormal)
       const responseAddr = await app.getAddressAndPubKey(PATH, false)
       const pubKey = responseAddr.pubkey
 

@@ -32,8 +32,9 @@ items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outV
 }
 
 items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+    char nothing[] = " ";
     *outValLen = 2;
-    snprintf(outVal, *outValLen, " ");
+    snprintf(outVal, *outValLen, "%s", nothing);
     return items_ok;
 }
 
@@ -165,20 +166,6 @@ items_error_t items_hashToDisplayString(__Z_UNUSED item_t item, char *outVal, ui
     return items_ok;
 }
 
-items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    uint8_t address[65];
-    uint16_t address_len;
-
-    if (crypto_fillAddress(address, sizeof(address), &address_len) != zxerr_ok) {
-        return items_error;
-    }
-
-    *outValLen = sizeof(address);
-    array_to_hexstr(outVal, *outValLen, address, PUB_KEY_LENGTH);
-
-    return items_ok;
-}
-
 items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
@@ -248,3 +235,19 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
 
     return items_ok;
 }
+
+#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
+items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+    uint8_t address[65];
+    uint16_t address_len;
+
+    if (crypto_fillAddress(address, sizeof(address), &address_len) != zxerr_ok) {
+        return items_error;
+    }
+
+    *outValLen = sizeof(address);
+    array_to_hexstr(outVal, *outValLen, address, PUB_KEY_LENGTH);
+
+    return items_ok;
+}
+#endif

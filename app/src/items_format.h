@@ -35,5 +35,7 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
 items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
 items_error_t items_gasToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
 items_error_t items_hashToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
 items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
+items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
+#endif
