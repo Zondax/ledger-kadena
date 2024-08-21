@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#include <zxmacros.h>
+#include "json_parser.h"
+
 #include "../common/parser_common.h"
 #include "jsmn/jsmn.h"
-#include "json_parser.h"
 
 #define EQUALS(_P, _Q, _LEN) (MEMCMP((const void *)PIC(_P), (const void *)PIC(_Q), (_LEN)) == 0)
 

@@ -15,11 +15,13 @@
  ********************************************************************************/
 #pragma once
 
-#include "jsmn.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
-#include "common/parser_common.h"
+#include <zxmacros.h>
+
+#include "jsmn.h"
+#include "parser_common.h"
 
 /// Max number of accepted tokens in the JSON input
 #define MAX_NUMBER_OF_TOKENS 768

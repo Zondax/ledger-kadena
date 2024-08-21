@@ -14,8 +14,6 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include "parser_impl.h"
-
 #include <hexutils.h>
 
 #include <iostream>
@@ -23,6 +21,7 @@
 
 #include "gmock/gmock.h"
 #include "parser.h"
+#include "parser_impl.h"
 #include "parser_txdef.h"
 #include "utils/common.h"
 

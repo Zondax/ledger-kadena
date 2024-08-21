@@ -14,11 +14,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#include "crypto_helper.h"
 #include "items.h"
+
+#include <base64.h>
+
+#include "crypto_helper.h"
 #include "items_format.h"
 #include "parser_impl.h"
-#include <base64.h>
 
 static items_error_t items_storeSigningTransaction();
 static items_error_t items_storeNetwork();

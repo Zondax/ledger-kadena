@@ -15,14 +15,14 @@
  ********************************************************************************/
 #pragma once
 
+#include <coin.h>
+#include <json/json_parser.h>
+
 #include <string>
 #include <vector>
 
-#include "parser_impl.h"
 #include "parser_common.h"
-
-#include <json/json_parser.h>
-#include <coin.h>
+#include "parser_impl.h"
 
 #define EXPECT_EQ_STR(_STR1, _STR2, _ERROR_MESSAGE)                                            \
     {                                                                                          \

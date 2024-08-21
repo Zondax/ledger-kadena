@@ -14,17 +14,18 @@
  *  limitations under the License.
  ********************************************************************************/
 
+#include "parser.h"
+
 #include <stdio.h>
 #include <zxformat.h>
 #include <zxmacros.h>
 #include <zxtypes.h>
 
-#include "items.h"
 #include "coin.h"
 #include "crypto.h"
 #include "crypto_helper.h"
+#include "items.h"
 #include "parser_impl.h"
-#include "parser.h"
 
 #define MAX_ITEM_LENGTH_IN_PAGE 40
 

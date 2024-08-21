@@ -19,9 +19,10 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
-#include <stddef.h>
 #include <json/json_parser.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "coin.h"
 
 typedef struct {

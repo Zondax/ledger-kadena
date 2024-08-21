@@ -15,9 +15,11 @@
  ********************************************************************************/
 
 #include "items_format.h"
-#include "parser.h"
-#include "crypto.h"
+
 #include <zxformat.h>
+
+#include "crypto.h"
+#include "parser.h"
 
 extern char base64_hash[44];
 

@@ -16,8 +16,9 @@
 #pragma once
 
 #include <zxmacros.h>
-#include "zxtypes.h"
+
 #include "items_defs.h"
+#include "zxtypes.h"
 
 #define WARNING_TEXT                                                                                                   \
     "UNSAFE TRANSACTION. This transaction's code was not recognized and does not limit capabilities for all signers. " \
