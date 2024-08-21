@@ -17,6 +17,7 @@
 #include "parser_impl.h"
 #include "crypto_helper.h"
 #include <base64.h>
+#include "items.h"
 
 tx_json_t *parser_tx_obj;
 
@@ -38,45 +39,49 @@ tx_json_t *parser_getParserTxObj() {
     return parser_tx_obj;
 }
 
-uint16_t parser_getNumberOfClistElements() {
-    uint16_t number_of_elements = 0;
-    parsed_json_t *json_all = &parser_tx_obj->json;
-    uint16_t token_index = 0;
-
-    parser_getJsonValue(&token_index, JSON_SIGNERS);
-    array_get_nth_element(json_all, token_index, 0, &token_index);
-    parser_getJsonValue(&token_index, JSON_CLIST);
-
-    CHECK_ERROR(array_get_element_count(json_all, token_index, &number_of_elements));
-
-    return number_of_elements;
-}
-
 parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
     parsed_json_t *json_all = &parser_tx_obj->json;
     uint16_t token_index = 0;
     uint16_t clist_token_index = 0;
     uint16_t args_token_index = 0;
     uint16_t number_of_args = 0;
+    uint16_t clist_element_count = 0;
+    jsmntok_t *value_token;
+    jsmntok_t *key_token;
 
-    parser_getJsonValue(&clist_token_index, JSON_SIGNERS);
+    CHECK_ERROR(object_get_value(json_all, 0, JSON_SIGNERS, &clist_token_index));
+
+    if (items_isNullField(clist_token_index)) {
+        return parser_no_data;
+    }
+
     array_get_nth_element(json_all, clist_token_index, 0, &clist_token_index);
-    parser_getJsonValue(&clist_token_index, JSON_CLIST);
 
-    for (uint16_t i = 0; i < parser_getNumberOfClistElements(); i++) {
+    CHECK_ERROR(object_get_value(json_all, clist_token_index, JSON_CLIST, &clist_token_index));
+
+    if (items_isNullField(clist_token_index)) {
+        return parser_no_data;
+    }
+
+    for (uint16_t i = 0; i < clist_element_count; i++) {
         CHECK_ERROR(array_get_nth_element(json_all, clist_token_index, i, &args_token_index));
-        CHECK_ERROR(parser_getJsonValue(&args_token_index, JSON_ARGS));
+        CHECK_ERROR(object_get_value(json_all, args_token_index, JSON_ARGS, &args_token_index));
         CHECK_ERROR(array_get_element_count(json_all, args_token_index, &number_of_args));
+
         for (uint16_t j = 0; j < number_of_args; j++) {
             array_get_nth_element(json_all, args_token_index, j, &token_index);
+            value_token = &(json_all->tokens[token_index]);
+            key_token = &(json_all->tokens[key_token_index]);
             uint8_t offset = 0;
-            // Take into account the "k:" notation for the key
-            if (MEMCMP("k:", json_all->buffer + json_all->tokens[token_index].start, 2) == 0) {
+
+            // Key could possibly be prefixed with "k:"
+            if (MEMCMP("k:", json_all->buffer + value_token->start, 2) == 0) {
                 offset = 2;
             }
-            if (MEMCMP(json_all->buffer + json_all->tokens[key_token_index].start,
-                json_all->buffer + json_all->tokens[token_index].start + offset,
-                json_all->tokens[key_token_index].end - json_all->tokens[key_token_index].start) == 0) {
+
+            if (MEMCMP(json_all->buffer + key_token->start,
+                json_all->buffer + value_token->start + offset,
+                key_token->end - key_token->start) == 0) {
                 return parser_ok;
             }
         }
@@ -85,50 +90,19 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
     return parser_no_data;
 }
 
-parser_error_t parser_getJsonValue(uint16_t *json_token_index, const char *key) {
-    parsed_json_t *json_all = &(parser_tx_obj->json);
-    uint16_t token_index = 0;
-
-    CHECK_ERROR(object_get_value(json_all, *json_token_index, key, &token_index));
-
-    if (MEMCMP("null", json_all->buffer + json_all->tokens[token_index].start, json_all->tokens[token_index].end - json_all->tokens[token_index].start) == 0) {
-        return parser_no_data;
-    }
-
-    *json_token_index = token_index;
-
-    return parser_ok;
-}
-
 parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, char *outVal, uint8_t *outValLen) {
     uint16_t token_index = 0;
     parsed_json_t *json_all = &(parser_tx_obj->json);
+    jsmntok_t *token;
 
     CHECK_ERROR(array_get_nth_element(json_all, json_token_index, element_idx, &token_index));
-    strncpy(outVal, json_all->buffer + json_all->tokens[token_index].start, json_all->tokens[token_index].end - json_all->tokens[token_index].start);
-    *outValLen = json_all->tokens[token_index].end - json_all->tokens[token_index].start;
+    token = &(json_all->tokens[token_index]);
+
+    strncpy(outVal, json_all->buffer + token->start, token->end - token->start);
+    *outValLen = token->end - token->start;
     outVal[*outValLen] = '\0';
 
     return parser_ok;
-}
-
-parser_error_t parser_getGasObject(uint16_t *json_token_index) {
-    uint16_t token_index = 0;
-    parsed_json_t *json_all = &parser_tx_obj->json;
-    uint16_t name_token_index = 0;
-    
-    for (uint16_t i = 0; i < parser_getNumberOfClistElements(); i++) {
-        CHECK_ERROR(array_get_nth_element(json_all, *json_token_index, i, &token_index));
-
-        CHECK_ERROR(object_get_value(json_all, token_index, JSON_NAME, &name_token_index));
-        if (MEMCMP("coin.GAS", json_all->buffer + json_all->tokens[name_token_index].start,
-            json_all->tokens[name_token_index].end - json_all->tokens[name_token_index].start) == 0) {
-            *json_token_index = token_index;
-            return parser_ok;
-        }
-    }
-
-    return parser_no_data;
 }
 
 parser_error_t parser_validateMetaField() {
@@ -145,15 +119,20 @@ parser_error_t parser_validateMetaField() {
     uint16_t meta_num_elements = 0;
     uint16_t key_token_idx = 0;
     parsed_json_t *json_all = &(parser_tx_obj->json);
+    jsmntok_t *token;
 
-    if (parser_getJsonValue(&meta_token_index, JSON_META) == parser_ok) {
+    object_get_value(json_all, 0, JSON_META, &meta_token_index);
+
+    if (!items_isNullField(meta_token_index)) {
         object_get_element_count(json_all, meta_token_index, &meta_num_elements);
+
         for (uint16_t i = 0; i < meta_num_elements; i++) {
             object_get_nth_key(json_all, meta_token_index, i, &key_token_idx);
+            token = &(json_all->tokens[key_token_idx]);
 
-            MEMCPY(meta_curr_key, json_all->buffer + json_all->tokens[key_token_idx].start,
-                json_all->tokens[key_token_idx].end - json_all->tokens[key_token_idx].start);
-            meta_curr_key[json_all->tokens[key_token_idx].end - json_all->tokens[key_token_idx].start] = '\0';
+            MEMCPY(meta_curr_key, json_all->buffer + token->start,
+                token->end - token->start);
+            meta_curr_key[token->end - token->start] = '\0';
 
             if (strcmp(keywords[i], meta_curr_key) != 0) {
                 return parser_invalid_meta_field;
@@ -203,4 +182,11 @@ const char *parser_getErrorDescription(parser_error_t err) {
         default:
             return "Unrecognized error code";
     }
+}
+
+bool items_isNullField(uint16_t json_token_index) {
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    jsmntok_t *token = &(json_all->tokens[json_token_index]);
+
+    return (MEMCMP("null", json_all->buffer + token->start, token->end - token->start) == 0);
 }

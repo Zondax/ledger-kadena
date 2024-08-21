@@ -99,12 +99,10 @@ endif
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
 CFLAGS += -Wvla
-# #{TODO} --> Need Rust?
 # LDFLAGS += -z muldefs
 # LDLIBS += -Lrust/target/thumbv6m-none-eabi/release -lrslib
 # APP_SOURCE_PATH += $(CURDIR)/rust/include
 
-# #{TODO} --> Need Rust?
 .PHONY: rust
 rust:
 	@echo "No rust code"

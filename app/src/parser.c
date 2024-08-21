@@ -26,6 +26,8 @@
 #include "parser_impl.h"
 #include "parser.h"
 
+#define MAX_ITEM_LENGTH_IN_PAGE 40
+
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
     ctx->offset = 0;
 
@@ -58,8 +60,8 @@ parser_error_t parser_validate(parser_context_t *ctx) {
     uint8_t numItems = 0;
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
 
-    char tmpKey[40] = {0};
-    char tmpVal[40] = {0};
+    char tmpKey[MAX_ITEM_LENGTH_IN_PAGE] = {0};
+    char tmpVal[MAX_ITEM_LENGTH_IN_PAGE] = {0};
 
     for (uint8_t idx = 0; idx < numItems; idx++) {
         uint8_t pageCount = 0;
@@ -97,7 +99,7 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     *pageCount = 1;
     uint8_t numItems = 0;
     item_array_t *item_array = items_getItemArray();
-    char tempVal[300] = {0};
+    char tempVal[255] = {0};
     uint16_t tempValLen = 0;
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
     CHECK_APP_CANARY()
