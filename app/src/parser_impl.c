@@ -60,7 +60,7 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
         return parser_no_data;
     }
 
-    for (uint16_t i = 0; i < clist_element_count; i++) {
+    for (uint16_t i = 0; i < (uint8_t)clist_element_count; i++) {
         CHECK_ERROR(array_get_nth_element(json_all, clist_token_index, i, &args_token_index));
         CHECK_ERROR(object_get_value(json_all, args_token_index, JSON_ARGS, &args_token_index));
         CHECK_ERROR(array_get_element_count(json_all, args_token_index, &number_of_args));

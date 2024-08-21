@@ -212,7 +212,7 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
 
     if (args_count) {
         uint16_t args_token_index = 0;
-        for (uint8_t i = 0; i < args_count - 1; i++) {
+        for (uint8_t i = 0; i < (uint8_t)args_count - 1; i++) {
             PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, i, &args_token_index));
             token = &(json_all->tokens[args_token_index]);
 

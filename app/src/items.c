@@ -166,7 +166,7 @@ static items_error_t items_validateSigners() {
                 uint16_t clist_element_count = 0;
                 PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, clist_token_index, &clist_element_count));
 
-                for (uint8_t i = 0; i < clist_element_count; i++) {
+                for (uint8_t i = 0; i < (uint8_t)clist_element_count; i++) {
                     if (array_get_nth_element(json_all, clist_token_index, i, &token_index) == parser_ok) {
                         uint16_t name_token_index = 0;
                         if (object_get_value(json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
@@ -212,7 +212,7 @@ static items_error_t items_storePayingGas() {
             uint16_t clist_element_count = 0;
             PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, *curr_token_idx, &clist_element_count));
 
-            for (uint16_t i = 0; i < clist_element_count; i++) {
+            for (uint16_t i = 0; i < (uint8_t)clist_element_count; i++) {
                 PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, i, &token_index));
 
                 PARSER_TO_ITEMS_ERROR(object_get_value(json_all, token_index, JSON_NAME, &name_token_index));

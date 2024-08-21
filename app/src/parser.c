@@ -51,7 +51,7 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
     CHECK_ERROR(_read_json_tx(ctx, tx_obj));
 
     items_initItems();
-    items_storeItems(ctx);
+    items_storeItems();
 
     return parser_ok;
 }
