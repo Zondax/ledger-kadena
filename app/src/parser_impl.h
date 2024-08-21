@@ -38,15 +38,16 @@ extern "C" {
 #define JSON_GAS_LIMIT      "gasLimit"
 #define JSON_GAS_PRICE      "gasPrice"
 #define JSON_SENDER         "sender"
+
 typedef struct {
     const uint8_t *buffer;
     uint16_t bufferLen;
     uint16_t offset;
-    parser_tx_t *tx_obj;
+    tx_json_t *tx_obj;
 } parser_context_t;
 
-parser_error_t _read_json_tx(parser_context_t *c, parser_tx_t *v);
-parser_tx_t *parser_getParserTxObj();
+parser_error_t _read_json_tx(parser_context_t *c, tx_json_t *v);
+tx_json_t *parser_getParserTxObj();
 parser_error_t parser_initClistObject();
 parser_error_t parser_getTransferFrom(char **from, uint16_t *from_len);
 parser_error_t parser_getTransferTo(char **to, uint16_t *to_len);

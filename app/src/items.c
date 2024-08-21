@@ -39,7 +39,7 @@ static items_error_t items_storeCrossTransferItem(parsed_json_t *json_all, uint1
 static items_error_t items_storeRotateItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies);
 static items_error_t items_storeUnknownItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies);
 
-#define MAX_ITEM_LENGTH_TO_DISPLAY 1000 // TODO : Check other apps to find this number
+#define MAX_ITEM_LENGTH_TO_DISPLAY 256
 
 item_array_t item_array = {0};
 
@@ -126,7 +126,7 @@ static items_error_t items_storeRequiringCapabilities(uint8_t *items_idx) {
 }
 
 static items_error_t items_storeKey(uint8_t *items_idx) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
 
     if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
@@ -142,7 +142,7 @@ static items_error_t items_storeKey(uint8_t *items_idx) {
 }
 
 static items_error_t items_validateSigners(uint8_t *items_idx) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
     uint16_t token_index = 0;
 
@@ -180,7 +180,7 @@ static items_error_t items_validateSigners(uint8_t *items_idx) {
 }
 
 static items_error_t items_storePayingGas(uint8_t *items_idx, uint8_t *unknown_capabitilies) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
 
     if (parser_getJsonValue(curr_token_idx, JSON_SIGNERS) == parser_ok) {
@@ -198,7 +198,7 @@ static items_error_t items_storePayingGas(uint8_t *items_idx, uint8_t *unknown_c
 }
 
 static items_error_t items_storeAllTransfers(uint8_t *items_idx, uint8_t *unknown_capabitilies) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t *curr_token_idx = &item_array.items[*items_idx].json_token_index;
     uint16_t token_index = 0;
     uint8_t num_of_transfers = 1;
@@ -302,7 +302,7 @@ static items_error_t items_checkTxLengths(uint8_t *items_idx) {
 static items_error_t items_storeHash(uint8_t *items_idx) {
     strcpy(item_array.items[*items_idx].key, "Transaction hash");
 
-    if (blake2b_hash((uint8_t *)parser_getParserTxObj()->tx_json.json.buffer, parser_getParserTxObj()->tx_json.json.bufferLen, hash) != zxerr_ok) {
+    if (blake2b_hash((uint8_t *)parser_getParserTxObj()->json.buffer, parser_getParserTxObj()->json.bufferLen, hash) != zxerr_ok) {
         return items_error;
     }
 
@@ -335,7 +335,7 @@ static items_error_t items_storeSignForAddr(uint8_t *items_idx) {
 static items_error_t items_storeGasItem(uint16_t json_token_index, uint8_t items_idx, uint8_t *unknown_capabitilies) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
 
     object_get_value(json_all, json_token_index, "args", &token_index);
     array_get_element_count(json_all, token_index, &args_count);

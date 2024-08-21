@@ -22,7 +22,7 @@
 extern char base64_hash[44];
 
 items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
 
     *outValLen = json_all->tokens[item_token_index].end - json_all->tokens[item_token_index].start + 1;
@@ -76,7 +76,7 @@ items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t 
     char from[65];
     uint8_t from_len = 0;
     uint16_t token_index = 0;
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
 
     object_get_value(json_all, item_token_index, "args", &token_index);
@@ -103,7 +103,7 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
     char chain[3];
     uint8_t chain_len = 0;
     uint16_t token_index = 0;
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
 
     object_get_value(json_all, item_token_index, "args", &token_index);
@@ -125,7 +125,7 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
 items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
     uint16_t token_index = 0;
     uint16_t item_token_index = item.json_token_index;
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
 
     object_get_value(json_all, item_token_index, "args", &token_index);
     array_get_nth_element(json_all, token_index, 0, &token_index);
@@ -141,7 +141,7 @@ items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uin
     uint8_t gasLimit_len = 0;
     char gasPrice[64];
     uint8_t gasPrice_len = 0;
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
     uint16_t meta_token_index = item_token_index;
 
@@ -171,7 +171,7 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
     uint16_t args_count = 0;
     uint8_t len = 0;
     uint8_t outVal_idx= 0;
-    parsed_json_t *json_all = &(parser_getParserTxObj()->tx_json.json);
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
 
     object_get_value(json_all, item_token_index, "name", &token_index);

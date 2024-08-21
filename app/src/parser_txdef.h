@@ -86,11 +86,6 @@ typedef struct
     tx_query_t query;
 }tx_json_t;
 
-typedef struct {
-    // TODO : Remove this abstraction if no more fields are needed
-    tx_json_t tx_json;
-} parser_tx_t;
-
 #ifdef __cplusplus
 }
 #endif
