@@ -61,7 +61,7 @@ $(info COIN  = [$(COIN)])
 
 ifeq ($(COIN),KDA)
 # Main app configuration
-APPNAME = "Kadena-Led"
+APPNAME = "Kadena"
 APPPATH = "44'/626'" --path "44'/1'"
 
 else

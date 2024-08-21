@@ -57,8 +57,8 @@ typedef enum {
 
     // Coin Specific
     parser_json_zero_tokens,
-    parser_json_too_many_tokens,    // "NOMEM: JSON string contains too many tokens"
-    parser_json_incomplete_json,    // "JSON string is not complete";
+    parser_json_too_many_tokens,  // "NOMEM: JSON string contains too many tokens"
+    parser_json_incomplete_json,  // "JSON string is not complete";
     parser_json_not_a_transfer,
     parser_invalid_meta_field,
     parser_json_unexpected_error,

@@ -25,19 +25,19 @@
 extern "C" {
 #endif
 
-#define JSON_NETWORK_ID     "networkId"
-#define JSON_META           "meta"
-#define JSON_SIGNERS        "signers"
-#define JSON_PUBKEY         "pubKey"
-#define JSON_CLIST          "clist"
-#define JSON_ARGS           "args"
-#define JSON_NAME           "name"
-#define JSON_CREATION_TIME  "creationTime"
-#define JSON_TTL            "ttl"
-#define JSON_CHAIN_ID       "chainId"
-#define JSON_GAS_LIMIT      "gasLimit"
-#define JSON_GAS_PRICE      "gasPrice"
-#define JSON_SENDER         "sender"
+#define JSON_NETWORK_ID "networkId"
+#define JSON_META "meta"
+#define JSON_SIGNERS "signers"
+#define JSON_PUBKEY "pubKey"
+#define JSON_CLIST "clist"
+#define JSON_ARGS "args"
+#define JSON_NAME "name"
+#define JSON_CREATION_TIME "creationTime"
+#define JSON_TTL "ttl"
+#define JSON_CHAIN_ID "chainId"
+#define JSON_GAS_LIMIT "gasLimit"
+#define JSON_GAS_PRICE "gasPrice"
+#define JSON_SENDER "sender"
 
 typedef struct {
     const uint8_t *buffer;
@@ -49,7 +49,8 @@ typedef struct {
 parser_error_t _read_json_tx(parser_context_t *c, tx_json_t *v);
 tx_json_t *parser_getParserTxObj();
 parser_error_t parser_findPubKeyInClist(uint16_t key_token_index);
-parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, char *outVal, uint8_t *outValLen);
+parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, char *outVal,
+                                           uint8_t *outValLen);
 parser_error_t parser_validateMetaField();
 bool items_isNullField(uint16_t json_token_index);
 

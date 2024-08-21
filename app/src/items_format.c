@@ -116,7 +116,8 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
 
     PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 3, chain, &chain_len));
 
-    *outValLen = amount_len + from_len + to_len + chain_len + sizeof("Cross-chain ") + sizeof(" from ") + sizeof(" to ") + 6 * sizeof("\"") + sizeof(" to chain ");
+    *outValLen = amount_len + from_len + to_len + chain_len + sizeof("Cross-chain ") + sizeof(" from ") + sizeof(" to ") +
+                 6 * sizeof("\"") + sizeof(" to chain ");
     snprintf(outVal, *outValLen, "Cross-chain %s from \"%s\" to \"%s\" to chain \"%s\"", amount, from, to, chain);
 
     return items_ok;
@@ -178,7 +179,7 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
     uint16_t token_index = 0;
     uint16_t args_count = 0;
     uint8_t len = 0;
-    uint8_t outVal_idx= 0;
+    uint8_t outVal_idx = 0;
     parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
     jsmntok_t *token;
@@ -192,7 +193,7 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
 
     // Remove null terminator
     outVal[outVal_idx - 1] = ',';
-    
+
     // Add space
     outVal[outVal_idx] = ' ';
     outVal_idx++;
@@ -213,31 +214,24 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
             PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, i, &args_token_index));
             token = &(json_all->tokens[args_token_index]);
 
+            len = token->end - token->start + (token->type == JSMN_STRING ? sizeof("arg X: \"\",") : sizeof("arg X: ,"));
+
             // Strings go in between double quotes
-            const char* format = (token->type == JSMN_STRING) 
-                ? "arg %d: \"%s\"," 
-                : "arg %d: %s,";
+            snprintf(outVal + outVal_idx, len, (token->type == JSMN_STRING) ? "arg %d: \"%s\"," : "arg %d: %s,", i + 1,
+                     json_all->buffer + token->start);
 
-            len = token->end - token->start + 
-                  (token->type == JSMN_STRING ? sizeof("arg X: \"\",") : sizeof("arg X: ,"));
-
-            snprintf(outVal + outVal_idx, len, format, i + 1, json_all->buffer + token->start);
             outVal_idx += len;
             outVal[outVal_idx - 1] = ' ';  // Remove null terminator
         }
-        
+
         // Last arg (without comma)
         PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, args_count - 1, &args_token_index));
         token = &(json_all->tokens[args_token_index]);
 
-        const char* format = (token->type == JSMN_STRING) 
-            ? "arg %d: \"%s\"" 
-            : "arg %d: %s";
+        len = token->end - token->start + (token->type == JSMN_STRING ? sizeof("arg X: \"\"") : sizeof("arg X: "));
 
-        len = token->end - token->start + 
-              (token->type == JSMN_STRING ? sizeof("arg X: \"\"") : sizeof("arg X: "));
-
-        snprintf(outVal + outVal_idx, len, format, args_count, json_all->buffer + token->start);
+        snprintf(outVal + outVal_idx, len, (token->type == JSMN_STRING) ? "arg %d: \"%s\"" : "arg %d: %s", args_count,
+                 json_all->buffer + token->start);
         outVal_idx += len;
     } else {
         len = sizeof("no args");

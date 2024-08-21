@@ -22,12 +22,12 @@
 #include "common/parser_common.h"
 
 /// Max number of accepted tokens in the JSON input
-#define MAX_NUMBER_OF_TOKENS    768
+#define MAX_NUMBER_OF_TOKENS 768
 
 // Limit depending on target
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX)
 #undef MAX_NUMBER_OF_TOKENS
-#define MAX_NUMBER_OF_TOKENS    110
+#define MAX_NUMBER_OF_TOKENS 110
 #endif
 
 // Context that keeps all the parsed data together. That includes:
@@ -53,9 +53,7 @@ parser_error_t json_parse(parsed_json_t *parsed_json, const char *buffer, uint16
 /// \param array_token_index
 /// \param number of elements (out)
 /// \return Error message
-parser_error_t array_get_element_count(const parsed_json_t *json,
-                                       uint16_t array_token_index,
-                                       uint16_t *number_elements);
+parser_error_t array_get_element_count(const parsed_json_t *json, uint16_t array_token_index, uint16_t *number_elements);
 
 /// Get the token index of the nth array's element
 /// \param json
@@ -63,9 +61,7 @@ parser_error_t array_get_element_count(const parsed_json_t *json,
 /// \param element_index
 /// \param token index
 /// \return Error message
-parser_error_t array_get_nth_element(const parsed_json_t *json,
-                                     uint16_t array_token_index,
-                                     uint16_t element_index,
+parser_error_t array_get_nth_element(const parsed_json_t *json, uint16_t array_token_index, uint16_t element_index,
                                      uint16_t *token_index);
 
 /// Get the number of dictionary elements (key/value pairs) under given object
@@ -73,9 +69,7 @@ parser_error_t array_get_nth_element(const parsed_json_t *json,
 /// \param object_token_index: token index of the parent object
 /// \param number of elements (out)
 /// \return Error message
-parser_error_t object_get_element_count(const parsed_json_t *json,
-                                        uint16_t object_token_index,
-                                        uint16_t *number_elements);
+parser_error_t object_get_element_count(const parsed_json_t *json, uint16_t object_token_index, uint16_t *number_elements);
 
 /// Get the token index for the nth dictionary key
 /// \param json
@@ -83,9 +77,7 @@ parser_error_t object_get_element_count(const parsed_json_t *json,
 /// \param object_element_index
 /// \return token index (out)
 /// \return Error message
-parser_error_t object_get_nth_key(const parsed_json_t *json,
-                                  uint16_t object_token_index,
-                                  uint16_t object_element_index,
+parser_error_t object_get_nth_key(const parsed_json_t *json, uint16_t object_token_index, uint16_t object_element_index,
                                   uint16_t *token_index);
 
 /// Get the token index for the nth dictionary value
@@ -94,9 +86,7 @@ parser_error_t object_get_nth_key(const parsed_json_t *json,
 /// \param object_element_index
 /// \return token index (out))
 /// \return Error message
-parser_error_t object_get_nth_value(const parsed_json_t *json,
-                                    uint16_t object_token_index,
-                                    uint16_t object_element_index,
+parser_error_t object_get_nth_value(const parsed_json_t *json, uint16_t object_token_index, uint16_t object_element_index,
                                     uint16_t *token_index);
 
 /// Get the token index of the value that matches the given key
@@ -104,7 +94,5 @@ parser_error_t object_get_nth_value(const parsed_json_t *json,
 /// \param object_token_index: token index of the parent object
 /// \param key_name: key name of the wanted value
 /// \return Error message
-parser_error_t object_get_value(const parsed_json_t *json,
-                                uint16_t object_token_index,
-                                const char *key_name,
+parser_error_t object_get_value(const parsed_json_t *json, uint16_t object_token_index, const char *key_name,
                                 uint16_t *token_index);

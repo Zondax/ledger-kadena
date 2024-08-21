@@ -19,9 +19,12 @@
 #include "zxtypes.h"
 #include "items_defs.h"
 
-#define WARNING_TEXT "UNSAFE TRANSACTION. This transaction's code was not recognized and does not limit capabilities for all signers. Signing this transaction may make arbitrary actions on the chain including loss of all funds."
+#define WARNING_TEXT                                                                                                   \
+    "UNSAFE TRANSACTION. This transaction's code was not recognized and does not limit capabilities for all signers. " \
+    "Signing this transaction may make arbitrary actions on the chain including loss of all funds."
 #define CAUTION_TEXT "'meta' field of transaction not recognized"
-#define TX_TOO_LARGE_TEXT "Transaction too large for Ledger to display.  PROCEED WITH GREAT CAUTION.  Do you want to continue?"
+#define TX_TOO_LARGE_TEXT \
+    "Transaction too large for Ledger to display.  PROCEED WITH GREAT CAUTION.  Do you want to continue?"
 
 items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
 items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);

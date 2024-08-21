@@ -29,7 +29,7 @@ typedef struct {
     const uint8_t *ptr;
 } Bytes_t;
 
-typedef struct tx_textual_t{
+typedef struct tx_textual_t {
     size_t n_containers;
     uint8_t n_expert;
     uint8_t tmpBuffer[625];
@@ -57,8 +57,7 @@ typedef struct {
     int16_t out_val_len;
 } tx_query_t;
 
-typedef struct
-{
+typedef struct {
     // Buffer to the original tx blob
     const char *tx;
 
@@ -67,10 +66,10 @@ typedef struct
 
     // internal flags
     struct {
-        bool cache_valid:1;
-        bool msg_type_grouping:1;       // indicates if msg type grouping is enabled
-        bool msg_from_grouping:1;       // indicates if msg from grouping is enabled
-        bool msg_from_grouping_hide_all:1; // indicates if msg from grouping should hide all
+        bool cache_valid : 1;
+        bool msg_type_grouping : 1;           // indicates if msg type grouping is enabled
+        bool msg_from_grouping : 1;           // indicates if msg from grouping is enabled
+        bool msg_from_grouping_hide_all : 1;  // indicates if msg from grouping should hide all
     } flags;
 
     // indicates that N identical msg_type fields have been detected
@@ -84,7 +83,7 @@ typedef struct
 
     // current tx query
     tx_query_t query;
-}tx_json_t;
+} tx_json_t;
 
 #ifdef __cplusplus
 }

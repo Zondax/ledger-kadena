@@ -35,7 +35,8 @@ static items_error_t items_storeHash();
 static items_error_t items_storeSignForAddr();
 static items_error_t items_storeGasItem(uint16_t json_token_index);
 static items_error_t items_storeTxItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t *num_of_transfers);
-static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t *num_of_transfers);
+static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t transfer_token_index,
+                                            uint8_t *num_of_transfers);
 static items_error_t items_storeTxRotateItem(parsed_json_t *json_all, uint16_t transfer_token_index);
 static items_error_t items_storeUnknownItem(parsed_json_t *json_all, uint16_t transfer_token_index);
 
@@ -57,9 +58,7 @@ void items_initItems() {
     }
 }
 
-item_array_t *items_getItemArray() {
-    return &item_array;
-}
+item_array_t *items_getItemArray() { return &item_array; }
 
 void items_storeItems() {
     items_storeSigningTransaction();
@@ -91,9 +90,7 @@ void items_storeItems() {
     items_storeSignForAddr();
 }
 
-uint16_t items_getTotalItems() {
-    return item_array.numOfItems;
-}
+uint16_t items_getTotalItems() { return item_array.numOfItems; }
 
 static items_error_t items_storeSigningTransaction() {
     item_t *item = &item_array.items[item_array.numOfItems];
@@ -172,7 +169,7 @@ static items_error_t items_validateSigners() {
                         uint16_t name_token_index = 0;
                         if (object_get_value(json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
                             if (MEMCMP("coin.TRANSFER", json_all->buffer + json_all->tokens[name_token_index].start,
-                                    sizeof("coin.TRANSFER") - 1) == 0) {
+                                       sizeof("coin.TRANSFER") - 1) == 0) {
                                 if (parser_findPubKeyInClist(ofKey_item->json_token_index) == parser_ok) {
                                     *curr_token_idx = 0;
                                     return items_ok;
@@ -219,8 +216,7 @@ static items_error_t items_storePayingGas() {
                 PARSER_TO_ITEMS_ERROR(object_get_value(json_all, token_index, JSON_NAME, &name_token_index));
                 token = &(json_all->tokens[name_token_index]);
 
-                if (MEMCMP("coin.GAS", json_all->buffer + token->start,
-                        token->end - token->start) == 0) {
+                if (MEMCMP("coin.GAS", json_all->buffer + token->start, token->end - token->start) == 0) {
                     *curr_token_idx = token_index;
                     items_storeGasItem(*curr_token_idx);
                     item_array.numOfItems++;
@@ -259,15 +255,18 @@ static items_error_t items_storeAllTransfers() {
                         uint16_t name_token_index = 0;
                         if (object_get_value(json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
                             token = &(json_all->tokens[name_token_index]);
-                            if (MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, sizeof("coin.TRANSFER_XCHAIN") - 1) == 0) {
+                            if (MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start,
+                                       sizeof("coin.TRANSFER_XCHAIN") - 1) == 0) {
                                 *curr_token_idx = token_index;
                                 items_storeTxCrossItem(json_all, token_index, &num_of_transfers);
                                 item_array.numOfItems++;
-                            } else if (MEMCMP("coin.TRANSFER", json_all->buffer + token->start, sizeof("coin.TRANSFER") - 1) == 0) {
+                            } else if (MEMCMP("coin.TRANSFER", json_all->buffer + token->start,
+                                              sizeof("coin.TRANSFER") - 1) == 0) {
                                 *curr_token_idx = token_index;
                                 items_storeTxItem(json_all, token_index, &num_of_transfers);
                                 item_array.numOfItems++;
-                            } else if (MEMCMP("coin.ROTATE", json_all->buffer + token->start, sizeof("coin.ROTATE") - 1) == 0) {
+                            } else if (MEMCMP("coin.ROTATE", json_all->buffer + token->start, sizeof("coin.ROTATE") - 1) ==
+                                       0) {
                                 *curr_token_idx = token_index;
                                 items_storeTxRotateItem(json_all, token_index);
                                 item_array.numOfItems++;
@@ -342,7 +341,6 @@ static items_error_t items_storeUsingGas() {
     }
 
     return items_ok;
-
 }
 
 static items_error_t items_checkTxLengths() {
@@ -365,7 +363,8 @@ static items_error_t items_storeHash() {
 
     strcpy(item->key, "Transaction hash");
 
-    if (blake2b_hash((uint8_t *)parser_getParserTxObj()->json.buffer, parser_getParserTxObj()->json.bufferLen, hash) != zxerr_ok) {
+    if (blake2b_hash((uint8_t *)parser_getParserTxObj()->json.buffer, parser_getParserTxObj()->json.bufferLen, hash) !=
+        zxerr_ok) {
         return items_error;
     }
 
@@ -436,7 +435,8 @@ static items_error_t items_storeTxItem(parsed_json_t *json_all, uint16_t transfe
         item_array.numOfUnknownCapabitilies++;
         item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
-        if (num_of_args > 5 || json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
+        if (num_of_args > 5 ||
+            json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
             item->can_display = bool_false;
         }
     }
@@ -444,7 +444,8 @@ static items_error_t items_storeTxItem(parsed_json_t *json_all, uint16_t transfe
     return items_ok;
 }
 
-static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t *num_of_transfers) {
+static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t transfer_token_index,
+                                            uint8_t *num_of_transfers) {
     uint16_t token_index = 0;
     uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
@@ -462,7 +463,8 @@ static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t tr
         item_array.numOfUnknownCapabitilies++;
         item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
-        if (num_of_args > 5 || json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
+        if (num_of_args > 5 ||
+            json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
             item->can_display = bool_false;
         }
     }
@@ -487,7 +489,8 @@ static items_error_t items_storeTxRotateItem(parsed_json_t *json_all, uint16_t t
         item_array.numOfUnknownCapabitilies++;
         item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
-        if (num_of_args > 5 || json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
+        if (num_of_args > 5 ||
+            json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
             item->can_display = bool_false;
         }
     }
@@ -508,7 +511,8 @@ static items_error_t items_storeUnknownItem(parsed_json_t *json_all, uint16_t tr
     item_array.numOfUnknownCapabitilies++;
     item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
-    if (num_of_args > 5 || json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
+    if (num_of_args > 5 ||
+        json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
         item->can_display = bool_false;
     }
 

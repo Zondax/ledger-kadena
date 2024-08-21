@@ -16,21 +16,22 @@
 #pragma once
 
 #include <zxmacros.h>
+
 #include "zxtypes.h"
 
 #define MAX_NUMBER_OF_ITEMS 22
 
-#define PARSER_TO_ITEMS_ERROR(__CALL)                   \
-    {                                         \
-        parser_error_t __err = __CALL;        \
-        CHECK_APP_CANARY()                    \
+#define PARSER_TO_ITEMS_ERROR(__CALL)               \
+    {                                               \
+        parser_error_t __err = __CALL;              \
+        CHECK_APP_CANARY()                          \
         if (__err != parser_ok) return items_error; \
     }
 
-#define ITEMS_TO_PARSER_ERROR(__CALL)                   \
-    {                                         \
-        items_error_t __err = __CALL;        \
-        CHECK_APP_CANARY()                    \
+#define ITEMS_TO_PARSER_ERROR(__CALL)                          \
+    {                                                          \
+        items_error_t __err = __CALL;                          \
+        CHECK_APP_CANARY()                                     \
         if (__err != items_ok) return parser_unexpected_error; \
     }
 

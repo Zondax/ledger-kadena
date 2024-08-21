@@ -16,7 +16,6 @@
 
 #include "parser_impl.h"
 #include "crypto_helper.h"
-#include <base64.h>
 #include "items.h"
 
 tx_json_t *parser_tx_obj;
@@ -24,10 +23,9 @@ tx_json_t *parser_tx_obj;
 parser_error_t _read_json_tx(parser_context_t *c, tx_json_t *v) {
     parser_tx_obj = v;
 
-    CHECK_ERROR(json_parse(&(parser_tx_obj->json), (const char *) c->buffer,
-                           c->bufferLen));
+    CHECK_ERROR(json_parse(&(parser_tx_obj->json), (const char *)c->buffer, c->bufferLen));
 
-    parser_tx_obj->tx = (const char *) c->buffer;
+    parser_tx_obj->tx = (const char *)c->buffer;
     parser_tx_obj->flags.cache_valid = 0;
     parser_tx_obj->filter_msg_type_count = 0;
     parser_tx_obj->filter_msg_from_count = 0;
@@ -35,9 +33,7 @@ parser_error_t _read_json_tx(parser_context_t *c, tx_json_t *v) {
     return parser_ok;
 }
 
-tx_json_t *parser_getParserTxObj() {
-    return parser_tx_obj;
-}
+tx_json_t *parser_getParserTxObj() { return parser_tx_obj; }
 
 parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
     parsed_json_t *json_all = &parser_tx_obj->json;
@@ -79,9 +75,8 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
                 offset = 2;
             }
 
-            if (MEMCMP(json_all->buffer + key_token->start,
-                json_all->buffer + value_token->start + offset,
-                key_token->end - key_token->start) == 0) {
+            if (MEMCMP(json_all->buffer + key_token->start, json_all->buffer + value_token->start + offset,
+                       key_token->end - key_token->start) == 0) {
                 return parser_ok;
             }
         }
@@ -90,7 +85,8 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
     return parser_no_data;
 }
 
-parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, char *outVal, uint8_t *outValLen) {
+parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, char *outVal,
+                                           uint8_t *outValLen) {
     uint16_t token_index = 0;
     parsed_json_t *json_all = &(parser_tx_obj->json);
     jsmntok_t *token;
@@ -106,14 +102,7 @@ parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t e
 }
 
 parser_error_t parser_validateMetaField() {
-    const char *keywords[20] = {
-        JSON_CREATION_TIME,
-        JSON_TTL,
-        JSON_GAS_LIMIT,
-        JSON_CHAIN_ID,
-        JSON_GAS_PRICE,
-        JSON_SENDER
-    };
+    const char *keywords[20] = {JSON_CREATION_TIME, JSON_TTL, JSON_GAS_LIMIT, JSON_CHAIN_ID, JSON_GAS_PRICE, JSON_SENDER};
     char meta_curr_key[20];
     uint16_t meta_token_index = 0;
     uint16_t meta_num_elements = 0;
@@ -130,8 +119,7 @@ parser_error_t parser_validateMetaField() {
             object_get_nth_key(json_all, meta_token_index, i, &key_token_idx);
             token = &(json_all->tokens[key_token_idx]);
 
-            MEMCPY(meta_curr_key, json_all->buffer + token->start,
-                token->end - token->start);
+            MEMCPY(meta_curr_key, json_all->buffer + token->start, token->end - token->start);
             meta_curr_key[token->end - token->start] = '\0';
 
             if (strcmp(keywords[i], meta_curr_key) != 0) {
