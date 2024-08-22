@@ -104,14 +104,14 @@ parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t e
 
 parser_error_t parser_validateMetaField() {
     const char *keywords[20] = {JSON_CREATION_TIME, JSON_TTL, JSON_GAS_LIMIT, JSON_CHAIN_ID, JSON_GAS_PRICE, JSON_SENDER};
-    char meta_curr_key[20];
+    char meta_curr_key[40];
     uint16_t meta_token_index = 0;
     uint16_t meta_num_elements = 0;
     uint16_t key_token_idx = 0;
     parsed_json_t *json_all = &(parser_tx_obj->json);
     jsmntok_t *token;
 
-    object_get_value(json_all, 0, JSON_META, &meta_token_index);
+    CHECK_ERROR(object_get_value(json_all, 0, JSON_META, &meta_token_index));
 
     if (!items_isNullField(meta_token_index)) {
         object_get_element_count(json_all, meta_token_index, &meta_num_elements);
@@ -119,6 +119,9 @@ parser_error_t parser_validateMetaField() {
         for (uint16_t i = 0; i < meta_num_elements; i++) {
             object_get_nth_key(json_all, meta_token_index, i, &key_token_idx);
             token = &(json_all->tokens[key_token_idx]);
+
+            // Prevent buffer overflow in case of big key-value pair in meta field.
+            if (token->end - token->start > sizeof(meta_curr_key)) return parser_invalid_meta_field;
 
             MEMCPY(meta_curr_key, json_all->buffer + token->start, token->end - token->start);
             meta_curr_key[token->end - token->start] = '\0';
@@ -176,6 +179,8 @@ const char *parser_getErrorDescription(parser_error_t err) {
 bool items_isNullField(uint16_t json_token_index) {
     parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     jsmntok_t *token = &(json_all->tokens[json_token_index]);
+
+    if (token->end - token->start != sizeof("null") - 1) return false;
 
     return (MEMCMP("null", json_all->buffer + token->start, token->end - token->start) == 0);
 }

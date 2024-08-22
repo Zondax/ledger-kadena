@@ -22,7 +22,7 @@
 #include "parser_common.h"
 #include "zxtypes.h"
 
-void items_initItems();
-void items_storeItems();
+items_error_t items_initItems();
+items_error_t items_storeItems();
 uint16_t items_getTotalItems();
 item_array_t *items_getItemArray();

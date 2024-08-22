@@ -21,56 +21,80 @@
 #include "crypto.h"
 #include "parser.h"
 
-extern char base64_hash[44];
+extern char base64_hash[45];
 
-items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
     parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     jsmntok_t *token = &(json_all->tokens[item.json_token_index]);
+    uint16_t len = token->end - token->start + 1;
 
-    *outValLen = token->end - token->start + 1;
-    snprintf(outVal, *outValLen, "%s", json_all->buffer + token->start);
+    if (len == 1) return items_length_zero;
+
+    if (len > outValLen) {
+        return items_data_too_large;
+    }
+
+    snprintf(outVal, len, "%s", json_all->buffer + token->start);
 
     return items_ok;
 }
 
-items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
     char nothing[] = " ";
-    *outValLen = 2;
-    snprintf(outVal, *outValLen, "%s", nothing);
+    uint16_t len = 2;
+
+    if (len > outValLen) return items_data_too_large;
+
+    snprintf(outVal, len, "%s", nothing);
     return items_ok;
 }
 
-items_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof(WARNING_TEXT);
-    snprintf(outVal, *outValLen, WARNING_TEXT);
+items_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
+    uint16_t len = sizeof(WARNING_TEXT);
+
+    if (len > outValLen) return items_data_too_large;
+
+    snprintf(outVal, len, WARNING_TEXT);
     return items_ok;
 }
 
-items_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof(CAUTION_TEXT);
-    snprintf(outVal, *outValLen, CAUTION_TEXT);
+items_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
+    uint16_t len = sizeof(CAUTION_TEXT);
+
+    if (len > outValLen) return items_data_too_large;
+
+    snprintf(outVal, len, CAUTION_TEXT);
     return items_ok;
 }
 
-items_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof(TX_TOO_LARGE_TEXT);
-    snprintf(outVal, *outValLen, TX_TOO_LARGE_TEXT);
+items_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
+    uint16_t len = sizeof(TX_TOO_LARGE_TEXT);
+
+    if (len > outValLen) return items_data_too_large;
+
+    snprintf(outVal, len, TX_TOO_LARGE_TEXT);
     return items_ok;
 }
 
-items_error_t items_signingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof("Transaction");
-    snprintf(outVal, *outValLen, "Transaction");
+items_error_t items_signingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
+    uint16_t len = sizeof("Transaction");
+
+    if (len > outValLen) return items_data_too_large;
+
+    snprintf(outVal, len, "Transaction");
     return items_ok;
 }
 
-items_error_t items_requiringToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof("Capabilities");
-    snprintf(outVal, *outValLen, "Capabilities");
+items_error_t items_requiringToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
+    uint16_t len = sizeof("Capabilities");
+
+    if (len > outValLen) return items_data_too_large;
+
+    snprintf(outVal, len, "Capabilities");
     return items_ok;
 }
 
-items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
     char amount[50];
     uint8_t amount_len = 0;
     char to[65];
@@ -89,13 +113,13 @@ items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t 
 
     PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, amount, &amount_len));
 
-    *outValLen = amount_len + from_len + to_len + sizeof(" from ") + sizeof(" to ") + 4 * sizeof("\"");
-    snprintf(outVal, *outValLen, "%s from \"%s\" to \"%s\"", amount, from, to);
+    outValLen = amount_len + from_len + to_len + sizeof(" from ") + sizeof(" to ") + 4 * sizeof("\"");
+    snprintf(outVal, outValLen, "%s from \"%s\" to \"%s\"", amount, from, to);
 
     return items_ok;
 }
 
-items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
     char amount[50];
     uint8_t amount_len = 0;
     char to[65];
@@ -118,14 +142,14 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
 
     PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 3, chain, &chain_len));
 
-    *outValLen = amount_len + from_len + to_len + chain_len + sizeof("Cross-chain ") + sizeof(" from ") + sizeof(" to ") +
+    outValLen = amount_len + from_len + to_len + chain_len + sizeof("Cross-chain ") + sizeof(" from ") + sizeof(" to ") +
                  6 * sizeof("\"") + sizeof(" to chain ");
-    snprintf(outVal, *outValLen, "Cross-chain %s from \"%s\" to \"%s\" to chain \"%s\"", amount, from, to, chain);
+    snprintf(outVal, outValLen, "Cross-chain %s from \"%s\" to \"%s\" to chain \"%s\"", amount, from, to, chain);
 
     return items_ok;
 }
 
-items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
     uint16_t token_index = 0;
     uint16_t item_token_index = item.json_token_index;
     parsed_json_t *json_all = &(parser_getParserTxObj()->json);
@@ -135,13 +159,13 @@ items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *o
     PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, 0, &token_index));
     token = &(json_all->tokens[token_index]);
 
-    *outValLen = token->end - token->start + sizeof("\"\"");
-    snprintf(outVal, *outValLen, "\"%s\"", json_all->buffer + token->start);
+    outValLen = token->end - token->start + sizeof("\"\"");
+    snprintf(outVal, outValLen, "\"%s\"", json_all->buffer + token->start);
 
     return items_ok;
 }
 
-items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
     char gasLimit[10];
     uint8_t gasLimit_len = 0;
     char gasPrice[64];
@@ -165,19 +189,19 @@ items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uin
     gasPrice_len = token->end - token->start + 1;
     snprintf(gasPrice, gasPrice_len, "%s", json_all->buffer + token->start);
 
-    *outValLen = gasLimit_len + gasPrice_len + sizeof("at most ") + sizeof(" at price ");
-    snprintf(outVal, *outValLen, "at most %s at price %s", gasLimit, gasPrice);
+    outValLen = gasLimit_len + gasPrice_len + sizeof("at most ") + sizeof(" at price ");
+    snprintf(outVal, outValLen, "at most %s at price %s", gasLimit, gasPrice);
 
     return items_ok;
 }
 
-items_error_t items_hashToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
-    *outValLen = sizeof(base64_hash);
-    snprintf(outVal, *outValLen, "%s", base64_hash);
+items_error_t items_hashToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
+    outValLen = sizeof(base64_hash) - 1;
+    snprintf(outVal, outValLen, "%s", base64_hash);
     return items_ok;
 }
 
-items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
     uint8_t len = 0;
@@ -241,13 +265,13 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
         outVal_idx += len;
     }
 
-    *outValLen = outVal_idx;
+    outValLen = outVal_idx;
 
     return items_ok;
 }
 
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
-items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen) {
+items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
     uint8_t address[65];
     uint16_t address_len;
 
@@ -255,8 +279,8 @@ items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *out
         return items_error;
     }
 
-    *outValLen = sizeof(address);
-    array_to_hexstr(outVal, *outValLen, address, PUB_KEY_LENGTH);
+    outValLen = sizeof(address);
+    array_to_hexstr(outVal, outValLen, address, PUB_KEY_LENGTH);
 
     return items_ok;
 }

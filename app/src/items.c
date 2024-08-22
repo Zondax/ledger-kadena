@@ -48,9 +48,9 @@ item_array_t item_array;
 
 uint8_t hash[BLAKE2B_HASH_SIZE] = {0};
 
-char base64_hash[44];
+char base64_hash[45];
 
-void items_initItems() {
+items_error_t items_initItems() {
     MEMZERO(&item_array, sizeof(item_array_t));
 
     item_array.numOfUnknownCapabitilies = 1;
@@ -58,11 +58,13 @@ void items_initItems() {
     for (uint8_t i = 0; i < sizeof(item_array.items) / sizeof(item_array.items[0]); i++) {
         item_array.items[i].can_display = bool_true;
     }
+
+    return items_ok;
 }
 
 item_array_t *items_getItemArray() { return &item_array; }
 
-void items_storeItems() {
+items_error_t items_storeItems() {
     items_storeSigningTransaction();
 
     items_storeNetwork();
@@ -90,6 +92,8 @@ void items_storeItems() {
     items_storeHash();
 
     items_storeSignForAddr();
+
+    return items_ok;
 }
 
 uint16_t items_getTotalItems() { return item_array.numOfItems; }

@@ -27,19 +27,19 @@
 #define TX_TOO_LARGE_TEXT \
     "Transaction too large for Ledger to display.  PROCEED WITH GREAT CAUTION.  Do you want to continue?"
 
-items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_signingToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_requiringToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_gasToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_hashToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
-items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t *outValLen);
+items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_signingToDisplayString(item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_requiringToDisplayString(item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_gasToDisplayString(item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_hashToDisplayString(item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t outValLen);
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
-items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t *outValLen);
+items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
 #endif

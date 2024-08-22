@@ -50,8 +50,8 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
 
     CHECK_ERROR(_read_json_tx(ctx, tx_obj));
 
-    items_initItems();
-    items_storeItems();
+    ITEMS_TO_PARSER_ERROR(items_initItems());
+    ITEMS_TO_PARSER_ERROR(items_storeItems());
 
     return parser_ok;
 }
@@ -100,8 +100,7 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     *pageCount = 1;
     uint8_t numItems = 0;
     item_array_t *item_array = items_getItemArray();
-    char tempVal[255] = {0};
-    uint16_t tempValLen = 0;
+    char tempVal[300] = {0};
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
     CHECK_APP_CANARY()
 
@@ -109,7 +108,7 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
 
     snprintf(outKey, outKeyLen, "%s", item_array->items[displayIdx].key);
-    ITEMS_TO_PARSER_ERROR(item_array->toString[displayIdx](item_array->items[displayIdx], tempVal, &tempValLen));
+    ITEMS_TO_PARSER_ERROR(item_array->toString[displayIdx](item_array->items[displayIdx], tempVal, sizeof(tempVal)));
     pageString(outVal, outValLen, tempVal, pageIdx, pageCount);
 
     return parser_ok;
