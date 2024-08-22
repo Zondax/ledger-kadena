@@ -21,8 +21,8 @@
 
 tx_json_t *parser_tx_obj;
 
-parser_error_t _read_json_tx(parser_context_t *c, tx_json_t *v) {
-    parser_tx_obj = v;
+parser_error_t _read_json_tx(parser_context_t *c) {
+    parser_tx_obj = c->tx_obj;
 
     CHECK_ERROR(json_parse(&(parser_tx_obj->json), (const char *)c->buffer, c->bufferLen));
 

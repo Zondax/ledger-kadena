@@ -51,6 +51,6 @@ typedef enum {
 typedef struct {
     item_t items[MAX_NUMBER_OF_ITEMS];
     uint8_t numOfItems;
-    uint8_t numOfUnknownCapabitilies;
+    uint8_t numOfUnknownCapabilities;
     items_error_t (*toString[MAX_NUMBER_OF_ITEMS])(item_t item, char *outVal, uint16_t outValLen);
 } item_array_t;

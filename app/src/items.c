@@ -53,9 +53,9 @@ char base64_hash[45];
 items_error_t items_initItems() {
     MEMZERO(&item_array, sizeof(item_array_t));
 
-    item_array.numOfUnknownCapabitilies = 1;
+    item_array.numOfUnknownCapabilities = 1;
 
-    for (uint8_t i = 0; i < sizeof(item_array.items) / sizeof(item_array.items[0]); i++) {
+    for (uint8_t i = 0; i < MAX_NUMBER_OF_ITEMS; i++) {
         item_array.items[i].can_display = bool_true;
     }
 
@@ -412,8 +412,8 @@ static items_error_t items_storeGasItem(uint16_t json_token_index) {
     PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &args_count));
 
     if (args_count > 0) {
-        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabitilies);
-        item_array.numOfUnknownCapabitilies++;
+        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
+        item_array.numOfUnknownCapabilities++;
         item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
     } else {
         strcpy(item->key, "Paying Gas");
@@ -437,8 +437,8 @@ static items_error_t items_storeTxItem(parsed_json_t *json_all, uint16_t transfe
         (*num_of_transfers)++;
         item_array.toString[item_array.numOfItems] = items_transferToDisplayString;
     } else {
-        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabitilies);
-        item_array.numOfUnknownCapabitilies++;
+        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
+        item_array.numOfUnknownCapabilities++;
         item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
         if (num_of_args > 5 ||
@@ -465,8 +465,8 @@ static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t tr
         (*num_of_transfers)++;
         item_array.toString[item_array.numOfItems] = items_crossTransferToDisplayString;
     } else {
-        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabitilies);
-        item_array.numOfUnknownCapabitilies++;
+        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
+        item_array.numOfUnknownCapabilities++;
         item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
         if (num_of_args > 5 ||
@@ -491,8 +491,8 @@ static items_error_t items_storeTxRotateItem(parsed_json_t *json_all, uint16_t t
         snprintf(item->key, sizeof(item->key), "Rotate for account");
         item_array.toString[item_array.numOfItems] = items_rotateToDisplayString;
     } else {
-        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabitilies);
-        item_array.numOfUnknownCapabitilies++;
+        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
+        item_array.numOfUnknownCapabilities++;
         item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
         if (num_of_args > 5 ||
@@ -513,8 +513,8 @@ static items_error_t items_storeUnknownItem(parsed_json_t *json_all, uint16_t tr
 
     PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
 
-    snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabitilies);
-    item_array.numOfUnknownCapabitilies++;
+    snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
+    item_array.numOfUnknownCapabilities++;
     item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
     if (num_of_args > 5 ||
