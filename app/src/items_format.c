@@ -24,17 +24,17 @@
 extern char base64_hash[45];
 
 items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
-    jsmntok_t *token = &(json_all->tokens[item.json_token_index]);
-    uint16_t len = token->end - token->start + 1;
+    const parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    const jsmntok_t *token = &(json_all->tokens[item.json_token_index]);
+    const uint16_t len = token->end - token->start;
 
-    if (len == 1) return items_length_zero;
+    if (len == 0) return items_length_zero;
 
-    if (len > outValLen) {
+    if (len >= outValLen) {
         return items_data_too_large;
     }
 
-    snprintf(outVal, len, "%s", json_all->buffer + token->start);
+    snprintf(outVal, outValLen, "%.*s", len, json_all->buffer + token->start);
 
     return items_ok;
 }
