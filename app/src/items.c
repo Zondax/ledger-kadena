@@ -42,11 +42,10 @@ static items_error_t items_checkTxLengths();
 static items_error_t items_storeHash();
 static items_error_t items_storeSignForAddr();
 static items_error_t items_storeGasItem(uint16_t json_token_index);
-static items_error_t items_storeTxItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t *num_of_transfers);
-static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t transfer_token_index,
-                                            uint8_t *num_of_transfers);
-static items_error_t items_storeTxRotateItem(parsed_json_t *json_all, uint16_t transfer_token_index);
-static items_error_t items_storeUnknownItem(parsed_json_t *json_all, uint16_t transfer_token_index);
+static items_error_t items_storeTxItem(uint16_t transfer_token_index, uint8_t *num_of_transfers);
+static items_error_t items_storeTxCrossItem(uint16_t transfer_token_index, uint8_t *num_of_transfers);
+static items_error_t items_storeTxRotateItem(uint16_t transfer_token_index);
+static items_error_t items_storeUnknownItem(uint16_t num_of_args, uint16_t transfer_token_index);
 
 #define MAX_ITEM_LENGTH_TO_DISPLAY 256
 
@@ -289,28 +288,30 @@ static items_error_t items_storeAllTransfers() {
                             if (strlen("coin.TRANSFER") == len &&
                                 MEMCMP("coin.TRANSFER", json_all->buffer + token->start, len) == 0) {
                                 *curr_token_idx = token_index;
-                                items_storeTxItem(json_all, token_index, &num_of_transfers);
+                                items_storeTxItem(token_index, &num_of_transfers);
                                 INCREMENT_NUM_ITEMS()
                             } else if (strlen("coin.TRANSFER_XCHAIN") == len &&
                                        MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len) == 0) {
                                 *curr_token_idx = token_index;
-                                items_storeTxCrossItem(json_all, token_index, &num_of_transfers);
+                                items_storeTxCrossItem(token_index, &num_of_transfers);
                                 INCREMENT_NUM_ITEMS()
                             } else if (strlen("coin.ROTATE") == len &&
                                        MEMCMP("coin.ROTATE", json_all->buffer + token->start, len) == 0) {
                                 *curr_token_idx = token_index;
-                                items_storeTxRotateItem(json_all, token_index);
+                                items_storeTxRotateItem(token_index);
                                 INCREMENT_NUM_ITEMS()
                             } else if (strlen("coin.GAS") != len ||
                                        MEMCMP("coin.GAS", json_all->buffer + token->start, len) != 0) {
                                 // Any other case that's not coin.GAS
+                                uint16_t args_token_index = 0;
+                                uint16_t num_of_args = 0;
+                                PARSER_TO_ITEMS_ERROR(object_get_value(json_all, token_index, "args", &args_token_index));
+                                PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, args_token_index, &num_of_args));
                                 *curr_token_idx = token_index;
-                                items_storeUnknownItem(json_all, token_index);
-                                item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
+                                items_storeUnknownItem(num_of_args, token_index);
                                 INCREMENT_NUM_ITEMS()
                             }
                             curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
-                            item = &item_array.items[item_array.numOfItems];
                         }
                     }
                 }
@@ -438,9 +439,8 @@ static items_error_t items_storeGasItem(uint16_t json_token_index) {
     PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &args_count));
 
     if (args_count > 0) {
-        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
-        item_array.numOfUnknownCapabilities++;
-        item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
+        items_storeUnknownItem(args_count, token_index);
+
     } else {
         strcpy(item->key, "Paying Gas");
         item_array.toString[item_array.numOfItems] = items_nothingToDisplayString;
@@ -449,10 +449,11 @@ static items_error_t items_storeGasItem(uint16_t json_token_index) {
     return items_ok;
 }
 
-static items_error_t items_storeTxItem(parsed_json_t *json_all, uint16_t transfer_token_index, uint8_t *num_of_transfers) {
+static items_error_t items_storeTxItem(uint16_t transfer_token_index, uint8_t *num_of_transfers) {
     uint16_t token_index = 0;
     uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
 
@@ -463,24 +464,17 @@ static items_error_t items_storeTxItem(parsed_json_t *json_all, uint16_t transfe
         (*num_of_transfers)++;
         item_array.toString[item_array.numOfItems] = items_transferToDisplayString;
     } else {
-        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
-        item_array.numOfUnknownCapabilities++;
-        item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
-
-        if (num_of_args > 5 ||
-            json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
-            item->can_display = bool_false;
-        }
+        items_storeUnknownItem(num_of_args, token_index);
     }
 
     return items_ok;
 }
 
-static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t transfer_token_index,
-                                            uint8_t *num_of_transfers) {
+static items_error_t items_storeTxCrossItem(uint16_t transfer_token_index, uint8_t *num_of_transfers) {
     uint16_t token_index = 0;
     uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
 
@@ -491,23 +485,17 @@ static items_error_t items_storeTxCrossItem(parsed_json_t *json_all, uint16_t tr
         (*num_of_transfers)++;
         item_array.toString[item_array.numOfItems] = items_crossTransferToDisplayString;
     } else {
-        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
-        item_array.numOfUnknownCapabilities++;
-        item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
-
-        if (num_of_args > 5 ||
-            json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
-            item->can_display = bool_false;
-        }
+        items_storeUnknownItem(num_of_args, token_index);
     }
 
     return items_ok;
 }
 
-static items_error_t items_storeTxRotateItem(parsed_json_t *json_all, uint16_t transfer_token_index) {
+static items_error_t items_storeTxRotateItem(uint16_t transfer_token_index) {
     uint16_t token_index = 0;
     uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
 
@@ -517,34 +505,22 @@ static items_error_t items_storeTxRotateItem(parsed_json_t *json_all, uint16_t t
         snprintf(item->key, sizeof(item->key), "Rotate for account");
         item_array.toString[item_array.numOfItems] = items_rotateToDisplayString;
     } else {
-        snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
-        item_array.numOfUnknownCapabilities++;
-        item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
-
-        if (num_of_args > 5 ||
-            json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
-            item->can_display = bool_false;
-        }
+        items_storeUnknownItem(num_of_args, token_index);
     }
 
     return items_ok;
 }
 
-static items_error_t items_storeUnknownItem(parsed_json_t *json_all, uint16_t transfer_token_index) {
-    uint16_t token_index = 0;
-    uint16_t num_of_args = 0;
+static items_error_t items_storeUnknownItem(uint16_t num_of_args, uint16_t transfer_token_index) {
     item_t *item = &item_array.items[item_array.numOfItems];
-
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
-
-    PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
 
     snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
     item_array.numOfUnknownCapabilities++;
     item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 
-    if (num_of_args > 5 ||
-        json_all->tokens[token_index].end - json_all->tokens[token_index].start > MAX_ITEM_LENGTH_TO_DISPLAY) {
+    if (num_of_args > 5 || json_all->tokens[transfer_token_index].end - json_all->tokens[transfer_token_index].start >
+                               MAX_ITEM_LENGTH_TO_DISPLAY) {
         item->can_display = bool_false;
     }
 
