@@ -72,11 +72,8 @@ parser_error_t array_get_nth_element(const parsed_json_t *json, uint16_t array_t
 
     uint16_t element_count = 0;
     uint16_t prev_element_end = array_token.start;
-    while (true) {
+    while (*token_index < json->numberOfTokens) {
         (*token_index)++;
-        if (*token_index >= json->numberOfTokens) {
-            break;
-        }
         jsmntok_t current_token = json->tokens[*token_index];
         if (current_token.start > array_token.end) {
             break;

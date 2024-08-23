@@ -60,7 +60,7 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
         return parser_no_data;
     }
 
-    for (uint16_t i = 0; i < (uint8_t)clist_element_count; i++) {
+    for (uint16_t i = 0; i < clist_element_count; i++) {
         CHECK_ERROR(array_get_nth_element(json_all, clist_token_index, i, &args_token_index));
         CHECK_ERROR(object_get_value(json_all, args_token_index, JSON_ARGS, &args_token_index));
         CHECK_ERROR(array_get_element_count(json_all, args_token_index, &number_of_args));
@@ -121,7 +121,7 @@ parser_error_t parser_validateMetaField() {
             token = &(json_all->tokens[key_token_idx]);
 
             // Prevent buffer overflow in case of big key-value pair in meta field.
-            if (token->end - token->start > sizeof(meta_curr_key)) return parser_invalid_meta_field;
+            if (token->end - token->start >= sizeof(meta_curr_key)) return parser_invalid_meta_field;
 
             MEMCPY(meta_curr_key, json_all->buffer + token->start, token->end - token->start);
             meta_curr_key[token->end - token->start] = '\0';

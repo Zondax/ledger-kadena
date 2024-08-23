@@ -159,6 +159,7 @@ static items_error_t items_validateSigners() {
     item_t *item = &item_array.items[item_array.numOfItems];
     item_t *ofKey_item = &item_array.items[item_array.numOfItems - 1];
     uint16_t token_index = 0;
+    jsmntok_t *token;
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_SIGNERS, curr_token_idx));
 
@@ -173,9 +174,17 @@ static items_error_t items_validateSigners() {
                 for (uint8_t i = 0; i < (uint8_t)clist_element_count; i++) {
                     if (array_get_nth_element(json_all, clist_token_index, i, &token_index) == parser_ok) {
                         uint16_t name_token_index = 0;
+
                         if (object_get_value(json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
-                            if (MEMCMP("coin.TRANSFER", json_all->buffer + json_all->tokens[name_token_index].start,
-                                       sizeof("coin.TRANSFER") - 1) == 0) {
+                            uint16_t len = 0;
+
+                            token = &(json_all->tokens[name_token_index]);
+
+                            len = token->end - token->start;
+
+                            if (len == 0 || strlen("coin.TRANSFER") != len) continue;
+
+                            if (MEMCMP("coin.TRANSFER", json_all->buffer + token->start, len) == 0) {
                                 if (parser_findPubKeyInClist(ofKey_item->json_token_index) == parser_ok) {
                                     *curr_token_idx = 0;
                                     return items_ok;
@@ -260,23 +269,31 @@ static items_error_t items_storeAllTransfers() {
                     if (array_get_nth_element(json_all, clist_token_index, i, &token_index) == parser_ok) {
                         uint16_t name_token_index = 0;
                         if (object_get_value(json_all, token_index, JSON_NAME, &name_token_index) == parser_ok) {
+                            uint16_t len = 0;
+
                             token = &(json_all->tokens[name_token_index]);
-                            if (MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start,
-                                       sizeof("coin.TRANSFER_XCHAIN") - 1) == 0) {
-                                *curr_token_idx = token_index;
-                                items_storeTxCrossItem(json_all, token_index, &num_of_transfers);
-                                item_array.numOfItems++;
-                            } else if (MEMCMP("coin.TRANSFER", json_all->buffer + token->start,
-                                              sizeof("coin.TRANSFER") - 1) == 0) {
+
+                            len = token->end - token->start;
+
+                            if (len == 0) continue;
+
+                            if (strlen("coin.TRANSFER") == len &&
+                                MEMCMP("coin.TRANSFER", json_all->buffer + token->start, len) == 0) {
                                 *curr_token_idx = token_index;
                                 items_storeTxItem(json_all, token_index, &num_of_transfers);
                                 item_array.numOfItems++;
-                            } else if (MEMCMP("coin.ROTATE", json_all->buffer + token->start, sizeof("coin.ROTATE") - 1) ==
-                                       0) {
+                            } else if (strlen("coin.TRANSFER_XCHAIN") == len &&
+                                       MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len) == 0) {
+                                *curr_token_idx = token_index;
+                                items_storeTxCrossItem(json_all, token_index, &num_of_transfers);
+                                item_array.numOfItems++;
+                            } else if (strlen("coin.ROTATE") == len &&
+                                       MEMCMP("coin.ROTATE", json_all->buffer + token->start, len) == 0) {
                                 *curr_token_idx = token_index;
                                 items_storeTxRotateItem(json_all, token_index);
                                 item_array.numOfItems++;
-                            } else if (MEMCMP("coin.GAS", json_all->buffer + token->start, sizeof("coin.GAS") - 1) != 0) {
+                            } else if (strlen("coin.GAS") != len ||
+                                       MEMCMP("coin.GAS", json_all->buffer + token->start, len) != 0) {
                                 // Any other case that's not coin.GAS
                                 *curr_token_idx = token_index;
                                 items_storeUnknownItem(json_all, token_index);

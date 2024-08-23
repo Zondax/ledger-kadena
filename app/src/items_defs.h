@@ -20,6 +20,7 @@
 #include "zxtypes.h"
 
 #define MAX_NUMBER_OF_ITEMS 22
+#define MAX_KEY_LENGTH 23 // Max length of key (screen title on display)
 
 #define PARSER_TO_ITEMS_ERROR(__CALL)               \
     {                                               \
@@ -36,7 +37,7 @@
     }
 
 typedef struct {
-    char key[23];
+    char key[MAX_KEY_LENGTH];
     uint16_t json_token_index;
     bool_t can_display;
 } item_t;

@@ -204,17 +204,26 @@ items_error_t items_hashToDisplayString(__Z_UNUSED item_t item, char *outVal, ui
 items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
-    uint8_t len = 0;
     uint8_t outVal_idx = 0;
     parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
     jsmntok_t *token;
+    uint16_t len = 0;
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, "name", &token_index));
     token = &(json_all->tokens[token_index]);
 
-    len = token->end - token->start + sizeof("name: ");
-    snprintf(outVal, len, "name: %s", json_all->buffer + token->start);
+    len = token->end - token->start;
+
+    if (len == 0) return items_length_zero;
+
+    len += sizeof("name: ");
+
+    if (len >= outValLen) {
+        return items_data_too_large;
+    }
+
+    snprintf(outVal, outValLen, "name: %.*s", len, json_all->buffer + token->start);
     outVal_idx += len;
 
     // Remove null terminator
