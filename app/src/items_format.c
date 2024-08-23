@@ -236,7 +236,6 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
     if (item.can_display == bool_false) {
         len = sizeof("args cannot be displayed on Ledger");
         snprintf(outVal + outVal_idx, len, "args cannot be displayed on Ledger");
-        outVal_idx += len;
         return items_ok;
     }
 
@@ -273,8 +272,6 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
         snprintf(outVal + outVal_idx, len, "no args");
         outVal_idx += len;
     }
-
-    outValLen = outVal_idx;
 
     return items_ok;
 }
