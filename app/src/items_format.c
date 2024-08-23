@@ -143,7 +143,7 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
     PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 3, chain, &chain_len));
 
     outValLen = amount_len + from_len + to_len + chain_len + sizeof("Cross-chain ") + sizeof(" from ") + sizeof(" to ") +
-                 6 * sizeof("\"") + sizeof(" to chain ");
+                6 * sizeof("\"") + sizeof(" to chain ");
     snprintf(outVal, outValLen, "Cross-chain %s from \"%s\" to \"%s\" to chain \"%s\"", amount, from, to, chain);
 
     return items_ok;

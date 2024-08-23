@@ -19,8 +19,15 @@
 
 #include "zxtypes.h"
 
-#define MAX_NUMBER_OF_ITEMS 22
-#define MAX_KEY_LENGTH 23 // Max length of key (screen title on display)
+#define MAX_NUMBER_OF_ITEMS 25
+#define MAX_KEY_LENGTH 23  // Max length of key (screen title on display)
+
+#define CHECK_ITEMS_ERROR(__CALL)            \
+    {                                        \
+        items_error_t __err = __CALL;        \
+        CHECK_APP_CANARY()                   \
+        if (__err != items_ok) return __err; \
+    }
 
 #define PARSER_TO_ITEMS_ERROR(__CALL)               \
     {                                               \
@@ -46,6 +53,7 @@ typedef enum {
     items_ok,
     items_length_zero,
     items_data_too_large,
+    items_too_many_items,
     items_error,
 } items_error_t;
 

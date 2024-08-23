@@ -22,6 +22,12 @@
 #include "items_format.h"
 #include "parser_impl.h"
 
+#define INCREMENT_NUM_ITEMS()                           \
+    item_array.numOfItems++;                            \
+    if (item_array.numOfItems >= MAX_NUMBER_OF_ITEMS) { \
+        return items_too_many_items;                    \
+    }
+
 static items_error_t items_storeSigningTransaction();
 static items_error_t items_storeNetwork();
 static items_error_t items_storeRequiringCapabilities();
@@ -65,33 +71,33 @@ items_error_t items_initItems() {
 item_array_t *items_getItemArray() { return &item_array; }
 
 items_error_t items_storeItems() {
-    items_storeSigningTransaction();
+    CHECK_ITEMS_ERROR(items_storeSigningTransaction());
 
-    items_storeNetwork();
+    CHECK_ITEMS_ERROR(items_storeNetwork());
 
-    items_storeRequiringCapabilities();
+    CHECK_ITEMS_ERROR(items_storeRequiringCapabilities());
 
-    items_storeKey();
+    CHECK_ITEMS_ERROR(items_storeKey());
 
-    items_validateSigners();
+    CHECK_ITEMS_ERROR(items_validateSigners());
 
-    items_storePayingGas();
+    CHECK_ITEMS_ERROR(items_storePayingGas());
 
-    items_storeAllTransfers();
+    CHECK_ITEMS_ERROR(items_storeAllTransfers());
 
     if (parser_validateMetaField() != parser_ok) {
-        items_storeCaution();
+        CHECK_ITEMS_ERROR(items_storeCaution());
     } else {
-        items_storeChainId();
+        CHECK_ITEMS_ERROR(items_storeChainId());
 
-        items_storeUsingGas();
+        CHECK_ITEMS_ERROR(items_storeUsingGas());
     }
 
-    items_checkTxLengths();
+    CHECK_ITEMS_ERROR(items_checkTxLengths());
 
-    items_storeHash();
+    CHECK_ITEMS_ERROR(items_storeHash());
 
-    items_storeSignForAddr();
+    CHECK_ITEMS_ERROR(items_storeSignForAddr());
 
     return items_ok;
 }
@@ -103,7 +109,7 @@ static items_error_t items_storeSigningTransaction() {
 
     strcpy(item->key, "Signing");
     item_array.toString[item_array.numOfItems] = items_signingToDisplayString;
-    item_array.numOfItems++;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
@@ -118,7 +124,7 @@ static items_error_t items_storeNetwork() {
     if (!items_isNullField(*curr_token_idx)) {
         strcpy(item->key, "On Network");
         item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
-        item_array.numOfItems++;
+        INCREMENT_NUM_ITEMS()
     }
 
     return items_ok;
@@ -128,7 +134,7 @@ static items_error_t items_storeRequiringCapabilities() {
     item_t *item = &item_array.items[item_array.numOfItems];
     strcpy(item->key, "Requiring");
     item_array.toString[item_array.numOfItems] = items_requiringToDisplayString;
-    item_array.numOfItems++;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
@@ -146,7 +152,7 @@ static items_error_t items_storeKey() {
         if (!items_isNullField(*curr_token_idx)) {
             strcpy(item->key, "Of Key");
             item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
-            item_array.numOfItems++;
+            INCREMENT_NUM_ITEMS()
         }
     }
 
@@ -203,7 +209,7 @@ static items_error_t items_validateSigners() {
     strcpy(item->key, "Unscoped Signer");
     *curr_token_idx = ofKey_item->json_token_index;
     item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
-    item_array.numOfItems++;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
@@ -219,7 +225,10 @@ static items_error_t items_storePayingGas() {
 
     if (!items_isNullField(*curr_token_idx)) {
         PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx));
-        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_CLIST, curr_token_idx));
+
+        if (object_get_value(json_all, *curr_token_idx, JSON_CLIST, curr_token_idx) == parser_no_data) {
+            return items_ok;
+        }
 
         if (!items_isNullField(*curr_token_idx)) {
             uint16_t clist_element_count = 0;
@@ -234,7 +243,7 @@ static items_error_t items_storePayingGas() {
                 if (MEMCMP("coin.GAS", json_all->buffer + token->start, token->end - token->start) == 0) {
                     *curr_token_idx = token_index;
                     items_storeGasItem(*curr_token_idx);
-                    item_array.numOfItems++;
+                    INCREMENT_NUM_ITEMS()
                     return items_ok;
                 }
             }
@@ -281,24 +290,24 @@ static items_error_t items_storeAllTransfers() {
                                 MEMCMP("coin.TRANSFER", json_all->buffer + token->start, len) == 0) {
                                 *curr_token_idx = token_index;
                                 items_storeTxItem(json_all, token_index, &num_of_transfers);
-                                item_array.numOfItems++;
+                                INCREMENT_NUM_ITEMS()
                             } else if (strlen("coin.TRANSFER_XCHAIN") == len &&
                                        MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len) == 0) {
                                 *curr_token_idx = token_index;
                                 items_storeTxCrossItem(json_all, token_index, &num_of_transfers);
-                                item_array.numOfItems++;
+                                INCREMENT_NUM_ITEMS()
                             } else if (strlen("coin.ROTATE") == len &&
                                        MEMCMP("coin.ROTATE", json_all->buffer + token->start, len) == 0) {
                                 *curr_token_idx = token_index;
                                 items_storeTxRotateItem(json_all, token_index);
-                                item_array.numOfItems++;
+                                INCREMENT_NUM_ITEMS()
                             } else if (strlen("coin.GAS") != len ||
                                        MEMCMP("coin.GAS", json_all->buffer + token->start, len) != 0) {
                                 // Any other case that's not coin.GAS
                                 *curr_token_idx = token_index;
                                 items_storeUnknownItem(json_all, token_index);
                                 item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
-                                item_array.numOfItems++;
+                                INCREMENT_NUM_ITEMS()
                             }
                             curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
                             item = &item_array.items[item_array.numOfItems];
@@ -313,7 +322,7 @@ static items_error_t items_storeAllTransfers() {
     // Non-existing/Null Signers or Clist
     strcpy(item->key, "WARNING");
     item_array.toString[item_array.numOfItems] = items_warningToDisplayString;
-    item_array.numOfItems++;
+    INCREMENT_NUM_ITEMS()
     *curr_token_idx = 0;
 
     return items_ok;
@@ -324,7 +333,7 @@ static items_error_t items_storeCaution() {
 
     strcpy(item->key, "CAUTION");
     item_array.toString[item_array.numOfItems] = items_cautionToDisplayString;
-    item_array.numOfItems++;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
@@ -341,7 +350,7 @@ static items_error_t items_storeChainId() {
         if (!items_isNullField(*curr_token_idx)) {
             strcpy(item->key, "On Chain");
             item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
-            item_array.numOfItems++;
+            INCREMENT_NUM_ITEMS()
         }
     }
 
@@ -358,7 +367,7 @@ static items_error_t items_storeUsingGas() {
     if (!items_isNullField(*curr_token_idx)) {
         strcpy(item->key, "Using Gas");
         item_array.toString[item_array.numOfItems] = items_gasToDisplayString;
-        item_array.numOfItems++;
+        INCREMENT_NUM_ITEMS()
     } else {
         *curr_token_idx = 0;
     }
@@ -373,7 +382,7 @@ static items_error_t items_checkTxLengths() {
         if (!item_array.items[i].can_display) {
             strcpy(item->key, "WARNING");
             item_array.toString[item_array.numOfItems] = items_txTooLargeToDisplayString;
-            item_array.numOfItems++;
+            INCREMENT_NUM_ITEMS()
             return items_ok;
         }
     }
@@ -403,7 +412,7 @@ static items_error_t items_storeHash() {
     }
 
     item_array.toString[item_array.numOfItems] = items_hashToDisplayString;
-    item_array.numOfItems++;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
@@ -414,7 +423,7 @@ static items_error_t items_storeSignForAddr() {
 
     strcpy(item->key, "Sign for Address");
     item_array.toString[item_array.numOfItems] = items_signForAddrToDisplayString;
-    item_array.numOfItems++;
+    INCREMENT_NUM_ITEMS()
 #endif
     return items_ok;
 }
