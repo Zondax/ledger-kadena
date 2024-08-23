@@ -266,11 +266,9 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
 
         snprintf(outVal + outVal_idx, len, (token->type == JSMN_STRING) ? "arg %d: \"%s\"" : "arg %d: %s", args_count,
                  json_all->buffer + token->start);
-        outVal_idx += len;
     } else {
         len = sizeof("no args");
         snprintf(outVal + outVal_idx, len, "no args");
-        outVal_idx += len;
     }
 
     return items_ok;
