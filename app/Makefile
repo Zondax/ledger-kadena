@@ -62,7 +62,7 @@ $(info COIN  = [$(COIN)])
 ifeq ($(COIN),KDA)
 # Main app configuration
 APPNAME = "Kadena"
-APPPATH = "44'/626'" --path "44'/1'"
+APPPATH = "44'/626'"
 
 else
 define error_message
