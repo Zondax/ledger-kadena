@@ -95,56 +95,58 @@ items_error_t items_requiringToDisplayString(__Z_UNUSED item_t item, char *outVa
 }
 
 items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
-    char amount[50];
+    const char *amount;
+    const char *to;
+    const char *from;
     uint8_t amount_len = 0;
-    char to[65];
     uint8_t to_len = 0;
-    char from[65];
     uint8_t from_len = 0;
     uint16_t token_index = 0;
     parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, "args", &token_index));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, &from, &from_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, &to, &to_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, &amount, &amount_len));
 
-    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, from, &from_len));
+    uint16_t required_len = amount_len + from_len + to_len + strlen(" from ") + strlen(" to ") + 4 * sizeof("\"");
+    if (required_len > outValLen) {
+        return items_data_too_large;
+    }
 
-    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, to, &to_len));
-
-    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, amount, &amount_len));
-
-    outValLen = amount_len + from_len + to_len + sizeof(" from ") + sizeof(" to ") + 4 * sizeof("\"");
-    snprintf(outVal, outValLen, "%s from \"%s\" to \"%s\"", amount, from, to);
+    snprintf(outVal, outValLen, "%.*s from \"%.*s\" to \"%.*s\"", amount_len, amount, from_len, from, to_len, to);
 
     return items_ok;
 }
 
 items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
-    char amount[50];
+    const char *amount;
+    const char *to;
+    const char *from;
+    const char *chain;
     uint8_t amount_len = 0;
-    char to[65];
     uint8_t to_len = 0;
-    char from[65];
     uint8_t from_len = 0;
-    char chain[3];
     uint8_t chain_len = 0;
     uint16_t token_index = 0;
     parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, "args", &token_index));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, &from, &from_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, &to, &to_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, &amount, &amount_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 3, &chain, &chain_len));
 
-    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, from, &from_len));
+    uint16_t required_len = amount_len + from_len + to_len + chain_len + strlen("Cross-chain ") + strlen(" from ") +
+                            strlen(" to ") + 6 * strlen("\"") + strlen(" to chain ");
+    if (required_len > outValLen) {
+        return items_data_too_large;
+    }
 
-    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, to, &to_len));
-
-    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, amount, &amount_len));
-
-    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 3, chain, &chain_len));
-
-    outValLen = amount_len + from_len + to_len + chain_len + sizeof("Cross-chain ") + sizeof(" from ") + sizeof(" to ") +
-                6 * sizeof("\"") + sizeof(" to chain ");
-    snprintf(outVal, outValLen, "Cross-chain %s from \"%s\" to \"%s\" to chain \"%s\"", amount, from, to, chain);
+    snprintf(outVal, outValLen, "Cross-chain %.*s from \"%.*s\" to \"%.*s\" to chain \"%.*s\"", amount_len, amount, from_len,
+             from, to_len, to, chain_len, chain);
 
     return items_ok;
 }
@@ -166,10 +168,10 @@ items_error_t items_rotateToDisplayString(item_t item, char *outVal, uint16_t ou
 }
 
 items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
-    char gasLimit[10];
-    uint8_t gasLimit_len = 0;
-    char gasPrice[64];
-    uint8_t gasPrice_len = 0;
+    const char *gasLimit;
+    const char *gasPrice;
+    uint8_t gasLimit_len;
+    uint8_t gasPrice_len;
     parsed_json_t *json_all = &(parser_getParserTxObj()->json);
     uint16_t item_token_index = item.json_token_index;
     uint16_t meta_token_index = item.json_token_index;
@@ -177,27 +179,32 @@ items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uin
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, JSON_GAS_LIMIT, &item_token_index));
     token = &(json_all->tokens[item_token_index]);
-
-    gasLimit_len = token->end - token->start + 1;
-    snprintf(gasLimit, gasLimit_len, "%s", json_all->buffer + token->start);
+    gasLimit = json_all->buffer + token->start;
+    gasLimit_len = token->end - token->start;
 
     item_token_index = meta_token_index;
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, JSON_GAS_PRICE, &item_token_index));
     token = &(json_all->tokens[item_token_index]);
+    gasPrice = json_all->buffer + token->start;
+    gasPrice_len = token->end - token->start;
 
-    gasPrice_len = token->end - token->start + 1;
-    snprintf(gasPrice, gasPrice_len, "%s", json_all->buffer + token->start);
+    uint16_t required_len = gasLimit_len + gasPrice_len + strlen("at most ") + strlen(" at price ");
+    if (required_len > outValLen) {
+        return items_data_too_large;
+    }
 
-    outValLen = gasLimit_len + gasPrice_len + sizeof("at most ") + sizeof(" at price ");
-    snprintf(outVal, outValLen, "at most %s at price %s", gasLimit, gasPrice);
+    snprintf(outVal, outValLen, "at most %.*s at price %.*s", gasLimit_len, gasLimit, gasPrice_len, gasPrice);
 
     return items_ok;
 }
 
 items_error_t items_hashToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
-    outValLen = sizeof(base64_hash) - 1;
-    snprintf(outVal, outValLen, "%s", base64_hash);
+    // TODO: why -2 here?
+    uint16_t len = sizeof(base64_hash) - 2;
+    if (len >= outValLen) return items_data_too_large;
+
+    snprintf(outVal, outValLen, "%.*s", len, base64_hash);
     return items_ok;
 }
 
@@ -217,25 +224,24 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
 
     if (len == 0) return items_length_zero;
 
-    len += sizeof("name: ");
-
     if (len >= outValLen) {
         return items_data_too_large;
     }
 
-    snprintf(outVal, outValLen, "name: %.*s", len, json_all->buffer + token->start);
-    outVal_idx += len;
+    snprintf(outVal, outValLen, "name: %.*s, ]}],\"", len, json_all->buffer + token->start);
 
-    // Remove null terminator
-    outVal[outVal_idx - 1] = ',';
-
-    // Add space
-    outVal[outVal_idx] = ' ';
-    outVal_idx++;
+    // outVal_idx is after the , of %.*s
+    outVal_idx = sizeof("name: ") + len + 1;
 
     if (item.can_display == bool_false) {
-        len = sizeof("args cannot be displayed on Ledger");
-        snprintf(outVal + outVal_idx, len, "args cannot be displayed on Ledger");
+        const char *msg = "args cannot be displayed on Ledger";
+        uint16_t len_msg = strlen(msg);
+
+        if (outVal_idx + len_msg >= outValLen) {
+            return items_data_too_large;
+        }
+
+        snprintf(outVal + outVal_idx, len_msg + 1, "%s", msg);
         return items_ok;
     }
 
@@ -267,8 +273,14 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
         snprintf(outVal + outVal_idx, len, (token->type == JSMN_STRING) ? "arg %d: \"%s\"" : "arg %d: %s", args_count,
                  json_all->buffer + token->start);
     } else {
-        len = sizeof("no args");
-        snprintf(outVal + outVal_idx, len, "no args");
+        const char *msg = "no args";
+        uint16_t len_msg = strlen(msg);
+
+        if (outVal_idx + len_msg >= outValLen) {
+            return items_data_too_large;
+        }
+
+        snprintf(outVal + outVal_idx, len + 1, "%s", msg);
     }
 
     return items_ok;

@@ -86,18 +86,23 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
     return parser_no_data;
 }
 
-parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, char *outVal,
+parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, const char **outVal,
                                            uint8_t *outValLen) {
     uint16_t token_index = 0;
     parsed_json_t *json_all = &(parser_tx_obj->json);
     jsmntok_t *token;
+    uint16_t element_count = 0;
+
+    CHECK_ERROR(array_get_element_count(json_all, json_token_index, &element_count));
+    if (element_idx >= element_count) {
+        return parser_no_data;
+    }
 
     CHECK_ERROR(array_get_nth_element(json_all, json_token_index, element_idx, &token_index));
     token = &(json_all->tokens[token_index]);
 
-    strncpy(outVal, json_all->buffer + token->start, token->end - token->start);
+    *outVal = json_all->buffer + token->start;
     *outValLen = token->end - token->start;
-    outVal[*outValLen] = '\0';
 
     return parser_ok;
 }
