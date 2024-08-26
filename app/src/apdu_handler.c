@@ -128,6 +128,46 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
     *flags |= IO_ASYNCH_REPLY;
 }
 
+__Z_INLINE void handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignHash\n");
+    if (!process_chunk(tx, rx)) {
+        THROW(APDU_CODE_OK);
+    }
+
+    // TODO: call parser for hash
+    const char *error_msg = tx_parse();
+    CHECK_APP_CANARY()
+    if (error_msg != NULL) {
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    view_review_init(tx_getItem, tx_getNumItems, app_sign);
+    view_review_show(REVIEW_TXN);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleSignTransaction(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignTransaction\n");
+    // if (!process_chunk(tx, rx)) {
+    //     THROW(APDU_CODE_OK);
+    // }
+
+    // const char *error_msg = tx_parse();
+    // CHECK_APP_CANARY()
+    // if (error_msg != NULL) {
+    //     const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+    //     memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+    //     *tx += (error_msg_length);
+    //     THROW(APDU_CODE_DATA_INVALID);
+    // }
+
+    // view_review_init(tx_getItem, tx_getNumItems, app_sign);
+    // view_review_show(REVIEW_TXN);
+    // *flags |= IO_ASYNCH_REPLY;
+}
 __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile uint32_t *tx) {
     G_io_apdu_buffer[0] = 0;
 
@@ -173,20 +213,32 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             }
 
             switch (G_io_apdu_buffer[OFFSET_INS]) {
-                case INS_GET_VERSION: {
+                case INS_GET_VERSION_KDA: {
                     handle_getversion(flags, tx);
                     break;
                 }
 
-                case INS_GET_ADDR: {
+                case INS_GET_ADDR_KDA: {
                     CHECK_PIN_VALIDATED()
                     handleGetAddr(flags, tx, rx);
                     break;
                 }
 
-                case INS_SIGN: {
+                case INS_SIGN_KDA: {
                     CHECK_PIN_VALIDATED()
                     handleSign(flags, tx, rx);
+                    break;
+                }
+
+                case INS_SIGN_HASH_KDA: {
+                    CHECK_PIN_VALIDATED()
+                    handleSignHash(flags, tx, rx);
+                    break;
+                }
+
+                case INS_SIGN_TRANSACTION_KDA: {
+                    CHECK_PIN_VALIDATED()
+                    handleSignTransaction(flags, tx, rx);
                     break;
                 }
 
