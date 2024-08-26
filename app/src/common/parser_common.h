@@ -22,8 +22,6 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#include "parser_txdef.h"
-
 #define CHECK_ERROR(__CALL)                   \
     {                                         \
         parser_error_t __err = __CALL;        \
@@ -56,14 +54,19 @@ typedef enum {
     parser_missing_field,
     paser_unknown_transaction,
     parser_tx_obj_empty,
-} parser_error_t;
 
-typedef struct {
-    const uint8_t *buffer;
-    uint16_t bufferLen;
-    uint16_t offset;
-    parser_tx_t *tx_obj;
-} parser_context_t;
+    // Coin Specific
+    parser_json_zero_tokens,
+    parser_json_too_many_tokens,  // "NOMEM: JSON string contains too many tokens"
+    parser_json_incomplete_json,  // "JSON string is not complete";
+    parser_json_not_a_transfer,
+    parser_invalid_meta_field,
+    parser_json_unexpected_error,
+    parser_name_tx_transfer,
+    parser_name_tx_transfer_xchain,
+    parser_name_rotate,
+    parser_name_gas,
+} parser_error_t;
 
 #ifdef __cplusplus
 }

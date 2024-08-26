@@ -24,16 +24,18 @@
 #include "coin.h"
 #include "crypto.h"
 #include "crypto_helper.h"
-#include "parser_common.h"
+#include "items.h"
 #include "parser_impl.h"
+
+#define MAX_ITEM_LENGTH_IN_PAGE 40
 
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
     ctx->offset = 0;
-    ctx->buffer = NULL;
-    ctx->bufferLen = 0;
 
     if (bufferSize == 0 || buffer == NULL) {
         // Not available, use defaults
+        ctx->buffer = NULL;
+        ctx->bufferLen = 0;
         return parser_init_context_empty;
     }
 
@@ -42,10 +44,16 @@ parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer,
     return parser_ok;
 }
 
-parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, parser_tx_t *tx_obj) {
+parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, tx_json_t *tx_obj) {
     CHECK_ERROR(parser_init_context(ctx, data, dataLen))
     ctx->tx_obj = tx_obj;
-    return _read(ctx, tx_obj);
+
+    CHECK_ERROR(_read_json_tx(ctx));
+
+    ITEMS_TO_PARSER_ERROR(items_initItems());
+    ITEMS_TO_PARSER_ERROR(items_storeItems());
+
+    return parser_ok;
 }
 
 parser_error_t parser_validate(parser_context_t *ctx) {
@@ -53,8 +61,8 @@ parser_error_t parser_validate(parser_context_t *ctx) {
     uint8_t numItems = 0;
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
 
-    char tmpKey[40] = {0};
-    char tmpVal[40] = {0};
+    char tmpKey[MAX_ITEM_LENGTH_IN_PAGE] = {0};
+    char tmpVal[MAX_ITEM_LENGTH_IN_PAGE] = {0};
 
     for (uint8_t idx = 0; idx < numItems; idx++) {
         uint8_t pageCount = 0;
@@ -68,7 +76,7 @@ parser_error_t parser_getNumItems(const parser_context_t *ctx, uint8_t *num_item
         return parser_tx_obj_empty;
     }
 
-    *num_items = 3;
+    *num_items = items_getTotalItems();
 
     return parser_ok;
 }
@@ -91,32 +99,17 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
                               char *outVal, uint16_t outValLen, uint8_t pageIdx, uint8_t *pageCount) {
     *pageCount = 1;
     uint8_t numItems = 0;
+    item_array_t *item_array = items_getItemArray();
+    char tempVal[300] = {0};
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
     CHECK_APP_CANARY()
 
     CHECK_ERROR(checkSanity(numItems, displayIdx))
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
 
-    switch (displayIdx) {
-        case 0:
-            snprintf(outKey, outKeyLen, "Blind sign");
-            snprintf(outVal, outValLen, "Plain text");
-            return parser_ok;
-        case 1:
-            snprintf(outKey, outKeyLen, "Blob");
-            pageString(outVal, outValLen, (char *)ctx->buffer, pageIdx, pageCount);
-            return parser_ok;
-        case 2:
-            snprintf(outKey, outKeyLen, "Hash");
-            uint8_t hash[BLAKE2B_HASH_SIZE] = {0};
-            if (blake2b_hash((uint8_t *)ctx->buffer, ctx->bufferLen, hash) != zxerr_ok) {
-                return parser_unexpected_error;
-            }
-            pageStringHex(outVal, outValLen, (char *)hash, BLAKE2B_HASH_SIZE, pageIdx, pageCount);
-            return parser_ok;
-        default:
-            break;
-    }
+    snprintf(outKey, outKeyLen, "%s", item_array->items[displayIdx].key);
+    ITEMS_TO_PARSER_ERROR(item_array->toString[displayIdx](item_array->items[displayIdx], tempVal, sizeof(tempVal)));
+    pageString(outVal, outValLen, tempVal, pageIdx, pageCount);
 
-    return parser_display_idx_out_of_range;
+    return parser_ok;
 }

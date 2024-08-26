@@ -52,14 +52,14 @@ DEFINES += PRODUCTION_BUILD=$(PRODUCTION_BUILD)
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.app_testing
 
 ifndef COIN
-COIN=KDA
+COIN=kadena
 endif
 
 include $(CURDIR)/Makefile.version
 
 $(info COIN  = [$(COIN)])
 
-ifeq ($(COIN),KDA)
+ifeq ($(COIN),kadena)
 # Main app configuration
 APPNAME = "Kadena"
 APPPATH = "44'/626'"
@@ -99,12 +99,10 @@ endif
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
 CFLAGS += -Wvla
-# #{TODO} --> Need Rust?
 # LDFLAGS += -z muldefs
 # LDLIBS += -Lrust/target/thumbv6m-none-eabi/release -lrslib
 # APP_SOURCE_PATH += $(CURDIR)/rust/include
 
-# #{TODO} --> Need Rust?
 .PHONY: rust
 rust:
 	@echo "No rust code"
@@ -141,7 +139,7 @@ dep/%.d: %.c Makefile
 
 .PHONY: listvariants
 listvariants:
-	@echo VARIANTS COIN KDA
+	@echo VARIANTS COIN kadena
 
 .PHONY: version
 version:

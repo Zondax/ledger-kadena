@@ -125,12 +125,15 @@ add_definitions(
 
 
 ##############################################################
-##{TODO}
-##############################################################
 # Static Libraries
-file(GLOB_RECURSE LIB_SRC
+
+file(GLOB_RECURSE BLAKE_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/BLAKE2/ref/blake2b-ref.c
+        )
+
+file(GLOB_RECURSE LIB_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/app_mode.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/base64.c
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/base58.c
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/bech32.c
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/bignum.c
@@ -139,19 +142,31 @@ file(GLOB_RECURSE LIB_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/zxformat.c
         ####
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/parser.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/items.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/items_format.c
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/parser_impl.c
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/crypto_helper.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/json/json_parser.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/jsmn/jsmn.c
         )
 
-add_library(app_lib STATIC ${LIB_SRC})
+add_library(app_lib STATIC
+        ${LIB_SRC}
+        ${JSMN_SRC}
+        ${BLAKE_SRC}
+        )
 
 target_include_directories(app_lib PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/BLAKE2/ref
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/include
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/lib
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/common
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/json
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/jsmn
+        ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/app/common
         )
+
+target_link_libraries(app_lib PUBLIC)
 
 ##############################################################
 #  Fuzz Targets
@@ -177,6 +192,8 @@ else()
             ${gmock_SOURCE_DIR}/include
             ${CMAKE_CURRENT_SOURCE_DIR}/app/src
             ${CMAKE_CURRENT_SOURCE_DIR}/app/src/lib
+            ${CMAKE_CURRENT_SOURCE_DIR}/app/src/json
+            ${CMAKE_CURRENT_SOURCE_DIR}/app/src/jsmn
             )
 
     target_link_libraries(unittests PRIVATE
