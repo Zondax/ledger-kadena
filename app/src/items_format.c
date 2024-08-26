@@ -217,7 +217,7 @@ items_error_t items_unknownCapabilityToDisplayString(item_t item, char *outVal, 
     jsmntok_t *token;
     uint16_t len = 0;
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, "name", &token_index));
+    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, JSON_NAME, &token_index));
     token = &(json_all->tokens[token_index]);
 
     len = token->end - token->start;

@@ -52,6 +52,8 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index);
 parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, const char **outVal,
                                            uint8_t *outValLen);
 parser_error_t parser_validateMetaField();
+parser_error_t parser_getTxName(uint16_t token_index);
+parser_error_t parser_getValidClist(uint16_t *clist_token_index, uint16_t *num_args);
 bool items_isNullField(uint16_t json_token_index);
 
 #ifdef __cplusplus

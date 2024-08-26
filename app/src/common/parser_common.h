@@ -62,6 +62,10 @@ typedef enum {
     parser_json_not_a_transfer,
     parser_invalid_meta_field,
     parser_json_unexpected_error,
+    parser_name_tx_transfer,
+    parser_name_tx_transfer_xchain,
+    parser_name_rotate,
+    parser_name_gas,
 } parser_error_t;
 
 #ifdef __cplusplus

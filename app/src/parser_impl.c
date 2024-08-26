@@ -46,17 +46,7 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
     jsmntok_t *value_token;
     jsmntok_t *key_token;
 
-    CHECK_ERROR(object_get_value(json_all, 0, JSON_SIGNERS, &clist_token_index));
-
-    if (items_isNullField(clist_token_index)) {
-        return parser_no_data;
-    }
-
-    array_get_nth_element(json_all, clist_token_index, 0, &clist_token_index);
-
-    CHECK_ERROR(object_get_value(json_all, clist_token_index, JSON_CLIST, &clist_token_index));
-
-    if (items_isNullField(clist_token_index)) {
+    if (parser_getValidClist(&clist_token_index, &clist_element_count) != parser_ok) {
         return parser_no_data;
     }
 
@@ -142,6 +132,62 @@ parser_error_t parser_validateMetaField() {
     return parser_ok;
 }
 
+parser_error_t parser_getTxName(uint16_t token_index) {
+    parsed_json_t *json_all = &(parser_tx_obj->json);
+
+    if (object_get_value(json_all, token_index, JSON_NAME, &token_index) == parser_ok) {
+        uint16_t len = 0;
+        jsmntok_t *token;
+
+        token = &(json_all->tokens[token_index]);
+
+        len = token->end - token->start;
+
+        if (len == 0) return parser_no_data;
+
+        if (strlen("coin.TRANSFER") == len && MEMCMP("coin.TRANSFER", json_all->buffer + token->start, len) == 0) {
+            return parser_name_tx_transfer;
+        } else if (strlen("coin.TRANSFER_XCHAIN") == len &&
+                   MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len) == 0) {
+            return parser_name_tx_transfer_xchain;
+        } else if (strlen("coin.ROTATE") == len && MEMCMP("coin.ROTATE", json_all->buffer + token->start, len) == 0) {
+            return parser_name_rotate;
+        } else if (strlen("coin.GAS") == len || MEMCMP("coin.GAS", json_all->buffer + token->start, len) == 0) {
+            return parser_name_gas;
+        }
+    }
+
+    return parser_no_data;
+}
+
+parser_error_t parser_getValidClist(uint16_t *clist_token_index, uint16_t *num_args) {
+    parsed_json_t *json_all = &(parser_tx_obj->json);
+
+    CHECK_ERROR(object_get_value(json_all, 0, JSON_SIGNERS, clist_token_index));
+
+    if (!items_isNullField(*clist_token_index)) {
+        CHECK_ERROR(array_get_nth_element(json_all, *clist_token_index, 0, clist_token_index));
+
+        if (object_get_value(json_all, *clist_token_index, JSON_CLIST, clist_token_index) == parser_ok) {
+            if (!items_isNullField(*clist_token_index)) {
+                CHECK_ERROR(array_get_element_count(json_all, *clist_token_index, num_args));
+                return parser_ok;
+            }
+        }
+    }
+
+    return parser_no_data;
+}
+
+bool items_isNullField(uint16_t json_token_index) {
+    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    jsmntok_t *token = &(json_all->tokens[json_token_index]);
+
+    if (token->end - token->start != sizeof("null") - 1) return false;
+
+    return (MEMCMP("null", json_all->buffer + token->start, token->end - token->start) == 0);
+}
+
 const char *parser_getErrorDescription(parser_error_t err) {
     switch (err) {
         case parser_ok:
@@ -179,13 +225,4 @@ const char *parser_getErrorDescription(parser_error_t err) {
         default:
             return "Unrecognized error code";
     }
-}
-
-bool items_isNullField(uint16_t json_token_index) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
-    jsmntok_t *token = &(json_all->tokens[json_token_index]);
-
-    if (token->end - token->start != sizeof("null") - 1) return false;
-
-    return (MEMCMP("null", json_all->buffer + token->start, token->end - token->start) == 0);
 }
