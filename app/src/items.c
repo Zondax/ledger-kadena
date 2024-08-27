@@ -21,6 +21,7 @@
 #include "crypto_helper.h"
 #include "items_format.h"
 #include "parser_impl.h"
+#include "zxformat.h"
 
 #define INCREMENT_NUM_ITEMS()                           \
     item_array.numOfItems++;                            \
@@ -36,6 +37,7 @@ static items_error_t items_validateSigners();
 static items_error_t items_storePayingGas();
 static items_error_t items_storeAllTransfers();
 static items_error_t items_storeCaution();
+static items_error_t items_storeHashWarning();
 static items_error_t items_storeChainId();
 static items_error_t items_storeUsingGas();
 static items_error_t items_checkTxLengths();
@@ -95,6 +97,10 @@ items_error_t items_storeItems(tx_type_t tx_type) {
         }
 
         CHECK_ITEMS_ERROR(items_checkTxLengths());
+    }
+
+    if (tx_type == tx_type_hash) {
+        CHECK_ITEMS_ERROR(items_storeHashWarning());
     }
 
     CHECK_ITEMS_ERROR(items_computeHash(tx_type));
@@ -288,6 +294,16 @@ static items_error_t items_storeAllTransfers() {
     return items_ok;
 }
 
+static items_error_t items_storeHashWarning() {
+    item_t *item = &item_array.items[item_array.numOfItems];
+
+    strcpy(item->key, "WARNING");
+    item_array.toString[item_array.numOfItems] = items_hashWarningToDisplayString;
+    INCREMENT_NUM_ITEMS()
+
+    return items_ok;
+}
+
 static items_error_t items_storeCaution() {
     item_t *item = &item_array.items[item_array.numOfItems];
 
@@ -353,16 +369,15 @@ static items_error_t items_checkTxLengths() {
 static items_error_t items_computeHash(tx_type_t tx_type) {
     if (tx_type == tx_type_hash) {
         tx_hash_t *hash_obj = parser_getParserHashObj();
-        MEMCPY(base64_hash, hash_obj->tx, hash_obj->hash_len);
-        return items_ok;
+        base64_encode(base64_hash, 44, hash_obj->tx, hash_obj->hash_len);
+    } else if (tx_type == tx_type_json) {
+        if (blake2b_hash((uint8_t *)parser_getParserJsonObj()->json.buffer, parser_getParserJsonObj()->json.bufferLen, hash) !=
+            zxerr_ok) {
+            return items_error;
+        }
+    
+        base64_encode(base64_hash, 44, hash, sizeof(hash));
     }
-
-    if (blake2b_hash((uint8_t *)parser_getParserJsonObj()->json.buffer, parser_getParserJsonObj()->json.bufferLen, hash) !=
-        zxerr_ok) {
-        return items_error;
-    }
-
-    base64_encode(base64_hash, 44, hash, sizeof(hash));
 
     // Make it base64 URL safe
     for (int i = 0; base64_hash[i] != '\0'; i++) {

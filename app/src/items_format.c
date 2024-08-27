@@ -58,6 +58,15 @@ items_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal,
     return items_ok;
 }
 
+items_error_t items_hashWarningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
+    uint16_t len = sizeof(HASH_WARNING_TEXT);
+
+    if (len > outValLen) return items_data_too_large;
+
+    snprintf(outVal, len, HASH_WARNING_TEXT);
+    return items_ok;
+}
+
 items_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen) {
     uint16_t len = sizeof(CAUTION_TEXT);
 
