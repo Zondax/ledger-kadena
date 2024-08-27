@@ -19,25 +19,39 @@
 #include "crypto_helper.h"
 #include "items.h"
 
-tx_json_t *parser_tx_obj;
+tx_json_t *parser_json_obj;
+tx_hash_t *parser_hash_obj;
 
 parser_error_t _read_json_tx(parser_context_t *c) {
-    parser_tx_obj = c->tx_obj;
+    parser_json_obj = c->json;
 
-    CHECK_ERROR(json_parse(&(parser_tx_obj->json), (const char *)c->buffer, c->bufferLen));
+    CHECK_ERROR(json_parse(&(parser_json_obj->json), (const char *)c->buffer, c->bufferLen));
 
-    parser_tx_obj->tx = (const char *)c->buffer;
-    parser_tx_obj->flags.cache_valid = 0;
-    parser_tx_obj->filter_msg_type_count = 0;
-    parser_tx_obj->filter_msg_from_count = 0;
+    parser_json_obj->tx = (const char *)c->buffer;
+    parser_json_obj->flags.cache_valid = 0;
+    parser_json_obj->filter_msg_type_count = 0;
+    parser_json_obj->filter_msg_from_count = 0;
 
     return parser_ok;
 }
 
-tx_json_t *parser_getParserTxObj() { return parser_tx_obj; }
+parser_error_t _read_hash_tx(parser_context_t *c) {
+    parser_hash_obj = c->hash;
 
+    MEMZERO(parser_hash_obj, sizeof(tx_hash_t));
+
+    parser_hash_obj->tx = (const char *)c->buffer;
+    parser_hash_obj->hash_len = c->bufferLen;
+
+    return parser_ok;
+}
+
+tx_json_t *parser_getParserJsonObj() { return parser_json_obj; }
+
+tx_hash_t *parser_getParserHashObj() { return parser_hash_obj; }
+ 
 parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
-    parsed_json_t *json_all = &parser_tx_obj->json;
+    parsed_json_t *json_all = &parser_json_obj->json;
     uint16_t token_index = 0;
     uint16_t clist_token_index = 0;
     uint16_t args_token_index = 0;
@@ -79,7 +93,7 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
 parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, const char **outVal,
                                            uint8_t *outValLen) {
     uint16_t token_index = 0;
-    parsed_json_t *json_all = &(parser_tx_obj->json);
+    parsed_json_t *json_all = &(parser_json_obj->json);
     jsmntok_t *token;
     uint16_t element_count = 0;
 
@@ -103,7 +117,7 @@ parser_error_t parser_validateMetaField() {
     uint16_t meta_token_index = 0;
     uint16_t meta_num_elements = 0;
     uint16_t key_token_idx = 0;
-    parsed_json_t *json_all = &(parser_tx_obj->json);
+    parsed_json_t *json_all = &(parser_json_obj->json);
     jsmntok_t *token;
 
     CHECK_ERROR(object_get_value(json_all, 0, JSON_META, &meta_token_index));
@@ -133,7 +147,7 @@ parser_error_t parser_validateMetaField() {
 }
 
 parser_error_t parser_getTxName(uint16_t token_index) {
-    parsed_json_t *json_all = &(parser_tx_obj->json);
+    parsed_json_t *json_all = &(parser_json_obj->json);
 
     if (object_get_value(json_all, token_index, JSON_NAME, &token_index) == parser_ok) {
         uint16_t len = 0;
@@ -161,7 +175,7 @@ parser_error_t parser_getTxName(uint16_t token_index) {
 }
 
 parser_error_t parser_getValidClist(uint16_t *clist_token_index, uint16_t *num_args) {
-    parsed_json_t *json_all = &(parser_tx_obj->json);
+    parsed_json_t *json_all = &(parser_json_obj->json);
 
     CHECK_ERROR(object_get_value(json_all, 0, JSON_SIGNERS, clist_token_index));
 
@@ -180,7 +194,7 @@ parser_error_t parser_getValidClist(uint16_t *clist_token_index, uint16_t *num_a
 }
 
 bool items_isNullField(uint16_t json_token_index) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
     jsmntok_t *token = &(json_all->tokens[json_token_index]);
 
     if (token->end - token->start != sizeof("null") - 1) return false;

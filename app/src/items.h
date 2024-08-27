@@ -21,8 +21,9 @@
 #include "json_parser.h"
 #include "parser_common.h"
 #include "zxtypes.h"
+#include "parser_txdef.h"
 
 items_error_t items_initItems();
-items_error_t items_storeItems();
+items_error_t items_storeItems(tx_type_t tx_type);
 uint16_t items_getTotalItems();
 item_array_t *items_getItemArray();

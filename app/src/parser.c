@@ -29,6 +29,9 @@
 
 #define MAX_ITEM_LENGTH_IN_PAGE 40
 
+tx_json_t tx_obj_json;
+tx_hash_t tx_obj_hash;
+
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
     ctx->offset = 0;
 
@@ -44,14 +47,19 @@ parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer,
     return parser_ok;
 }
 
-parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, tx_json_t *tx_obj) {
+parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, tx_type_t tx_type) {
     CHECK_ERROR(parser_init_context(ctx, data, dataLen))
-    ctx->tx_obj = tx_obj;
 
-    CHECK_ERROR(_read_json_tx(ctx));
+    if (tx_type == tx_type_json) {
+        ctx->json = &tx_obj_json;
+        CHECK_ERROR(_read_json_tx(ctx));
+    } else if (tx_type == tx_type_hash) {
+        ctx->hash = &tx_obj_hash;
+        CHECK_ERROR(_read_hash_tx(ctx));
+    }
 
-    ITEMS_TO_PARSER_ERROR(items_initItems());
-    ITEMS_TO_PARSER_ERROR(items_storeItems());
+    ITEMS_TO_PARSER_ERROR(items_initItems())
+    ITEMS_TO_PARSER_ERROR(items_storeItems(tx_type))
 
     return parser_ok;
 }
@@ -72,7 +80,7 @@ parser_error_t parser_validate(parser_context_t *ctx) {
 }
 
 parser_error_t parser_getNumItems(const parser_context_t *ctx, uint8_t *num_items) {
-    if (ctx->tx_obj == NULL) {
+    if (ctx->json == NULL) {
         return parser_tx_obj_empty;
     }
 

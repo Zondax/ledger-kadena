@@ -43,11 +43,17 @@ typedef struct {
     const uint8_t *buffer;
     uint16_t bufferLen;
     uint16_t offset;
-    tx_json_t *tx_obj;
+    union {
+        tx_json_t *json;
+        tx_hash_t *hash;
+    };
+
 } parser_context_t;
 
 parser_error_t _read_json_tx(parser_context_t *c);
-tx_json_t *parser_getParserTxObj();
+parser_error_t _read_hash_tx(parser_context_t *c);
+tx_json_t *parser_getParserJsonObj();
+tx_hash_t *parser_getParserHashObj();
 parser_error_t parser_findPubKeyInClist(uint16_t key_token_index);
 parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, const char **outVal,
                                            uint8_t *outValLen);

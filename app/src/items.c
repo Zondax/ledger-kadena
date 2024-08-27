@@ -39,6 +39,7 @@ static items_error_t items_storeCaution();
 static items_error_t items_storeChainId();
 static items_error_t items_storeUsingGas();
 static items_error_t items_checkTxLengths();
+static items_error_t items_computeHash(tx_type_t tx_type);
 static items_error_t items_storeHash();
 static items_error_t items_storeSignForAddr();
 static items_error_t items_storeGasItem(uint16_t json_token_index);
@@ -69,30 +70,34 @@ items_error_t items_initItems() {
 
 item_array_t *items_getItemArray() { return &item_array; }
 
-items_error_t items_storeItems() {
-    CHECK_ITEMS_ERROR(items_storeSigningTransaction());
+items_error_t items_storeItems(tx_type_t tx_type) {
+    if (tx_type == tx_type_json) {
+        CHECK_ITEMS_ERROR(items_storeSigningTransaction());
 
-    CHECK_ITEMS_ERROR(items_storeNetwork());
+        CHECK_ITEMS_ERROR(items_storeNetwork());
 
-    CHECK_ITEMS_ERROR(items_storeRequiringCapabilities());
+        CHECK_ITEMS_ERROR(items_storeRequiringCapabilities());
 
-    CHECK_ITEMS_ERROR(items_storeKey());
+        CHECK_ITEMS_ERROR(items_storeKey());
 
-    CHECK_ITEMS_ERROR(items_validateSigners());
+        CHECK_ITEMS_ERROR(items_validateSigners());
 
-    CHECK_ITEMS_ERROR(items_storePayingGas());
+        CHECK_ITEMS_ERROR(items_storePayingGas());
 
-    CHECK_ITEMS_ERROR(items_storeAllTransfers());
+        CHECK_ITEMS_ERROR(items_storeAllTransfers());
 
-    if (parser_validateMetaField() != parser_ok) {
-        CHECK_ITEMS_ERROR(items_storeCaution());
-    } else {
-        CHECK_ITEMS_ERROR(items_storeChainId());
+        if (parser_validateMetaField() != parser_ok) {
+            CHECK_ITEMS_ERROR(items_storeCaution());
+        } else {
+            CHECK_ITEMS_ERROR(items_storeChainId());
 
-        CHECK_ITEMS_ERROR(items_storeUsingGas());
+            CHECK_ITEMS_ERROR(items_storeUsingGas());
+        }
+
+        CHECK_ITEMS_ERROR(items_checkTxLengths());
     }
 
-    CHECK_ITEMS_ERROR(items_checkTxLengths());
+    CHECK_ITEMS_ERROR(items_computeHash(tx_type));
 
     CHECK_ITEMS_ERROR(items_storeHash());
 
@@ -116,7 +121,7 @@ static items_error_t items_storeSigningTransaction() {
 static items_error_t items_storeNetwork() {
     uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_NETWORK_ID, curr_token_idx));
 
@@ -139,7 +144,7 @@ static items_error_t items_storeRequiringCapabilities() {
 }
 
 static items_error_t items_storeKey() {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
     uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
 
@@ -159,7 +164,7 @@ static items_error_t items_storeKey() {
 }
 
 static items_error_t items_validateSigners() {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
     uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
     item_t *ofKey_item = &item_array.items[item_array.numOfItems - 1];
@@ -196,7 +201,7 @@ static items_error_t items_validateSigners() {
 }
 
 static items_error_t items_storePayingGas() {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
     uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     uint16_t token_index = 0;
     uint16_t name_token_index = 0;
@@ -235,7 +240,7 @@ static items_error_t items_storePayingGas() {
 }
 
 static items_error_t items_storeAllTransfers() {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
     uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     uint16_t token_index = 0;
     uint8_t num_of_transfers = 1;
@@ -296,7 +301,7 @@ static items_error_t items_storeCaution() {
 static items_error_t items_storeChainId() {
     uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, 0, JSON_META, curr_token_idx));
 
@@ -315,7 +320,7 @@ static items_error_t items_storeChainId() {
 static items_error_t items_storeUsingGas() {
     uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, 0, JSON_META, curr_token_idx));
 
@@ -345,12 +350,14 @@ static items_error_t items_checkTxLengths() {
     return items_ok;
 }
 
-static items_error_t items_storeHash() {
-    item_t *item = &item_array.items[item_array.numOfItems];
+static items_error_t items_computeHash(tx_type_t tx_type) {
+    if (tx_type == tx_type_hash) {
+        tx_hash_t *hash_obj = parser_getParserHashObj();
+        MEMCPY(base64_hash, hash_obj->tx, hash_obj->hash_len);
+        return items_ok;
+    }
 
-    strcpy(item->key, "Transaction hash");
-
-    if (blake2b_hash((uint8_t *)parser_getParserTxObj()->json.buffer, parser_getParserTxObj()->json.bufferLen, hash) !=
+    if (blake2b_hash((uint8_t *)parser_getParserJsonObj()->json.buffer, parser_getParserJsonObj()->json.bufferLen, hash) !=
         zxerr_ok) {
         return items_error;
     }
@@ -365,6 +372,14 @@ static items_error_t items_storeHash() {
             base64_hash[i] = '_';
         }
     }
+
+    return items_ok;
+}
+
+static items_error_t items_storeHash() {
+    item_t *item = &item_array.items[item_array.numOfItems];
+
+    strcpy(item->key, "Transaction hash");
 
     item_array.toString[item_array.numOfItems] = items_hashToDisplayString;
     INCREMENT_NUM_ITEMS()
@@ -386,7 +401,7 @@ static items_error_t items_storeSignForAddr() {
 static items_error_t items_storeGasItem(uint16_t json_token_index) {
     uint16_t token_index = 0;
     uint16_t args_count = 0;
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
     item_t *item = &item_array.items[item_array.numOfItems];
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, json_token_index, "args", &token_index));
@@ -407,7 +422,7 @@ static items_error_t items_storeTxItem(uint16_t transfer_token_index, uint8_t *n
     uint16_t token_index = 0;
     uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
 
@@ -429,7 +444,7 @@ static items_error_t items_storeTxCrossItem(uint16_t transfer_token_index, uint8
     uint16_t token_index = 0;
     uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
 
@@ -451,7 +466,7 @@ static items_error_t items_storeTxRotateItem(uint16_t transfer_token_index) {
     uint16_t token_index = 0;
     uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
 
@@ -470,7 +485,7 @@ static items_error_t items_storeTxRotateItem(uint16_t transfer_token_index) {
 
 static items_error_t items_storeUnknownItem(uint16_t num_of_args, uint16_t transfer_token_index) {
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
     snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
     item_array.numOfUnknownCapabilities++;

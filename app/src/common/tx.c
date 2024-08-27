@@ -44,7 +44,6 @@ storage_t NV_CONST N_appdata_impl __attribute__((aligned(64)));
 #define N_appdata (*(NV_VOLATILE storage_t *)PIC(&N_appdata_impl))
 #endif
 
-static tx_json_t tx_obj;
 static parser_context_t ctx_parsed_tx;
 
 void tx_initialize() {
@@ -59,10 +58,8 @@ uint32_t tx_get_buffer_length() { return buffering_get_buffer()->pos; }
 
 uint8_t *tx_get_buffer() { return buffering_get_buffer()->data; }
 
-const char *tx_parse() {
-    MEMZERO(&tx_obj, sizeof(tx_obj));
-
-    uint8_t err = parser_parse(&ctx_parsed_tx, tx_get_buffer(), tx_get_buffer_length(), &tx_obj);
+const char *tx_parse(tx_type_t tx_type) {
+    uint8_t err = parser_parse(&ctx_parsed_tx, tx_get_buffer(), tx_get_buffer_length(), tx_type);
 
     CHECK_APP_CANARY()
 
@@ -79,8 +76,6 @@ const char *tx_parse() {
 
     return NULL;
 }
-
-void tx_parse_reset() { MEMZERO(&tx_obj, sizeof(tx_obj)); }
 
 zxerr_t tx_getNumItems(uint8_t *num_items) {
     parser_error_t err = parser_getNumItems(&ctx_parsed_tx, num_items);

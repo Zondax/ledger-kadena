@@ -29,6 +29,7 @@
 #include "view.h"
 #include "view_internal.h"
 #include "zxmacros.h"
+#include "parser_txdef.h"
 
 static bool tx_initialized = false;
 
@@ -108,13 +109,13 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
     THROW(APDU_CODE_OK);
 }
 
-__Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    zemu_log("handleSign\n");
+__Z_INLINE void handleSignJson(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignJson\n");
     if (!process_chunk(tx, rx)) {
         THROW(APDU_CODE_OK);
     }
 
-    const char *error_msg = tx_parse();
+    const char *error_msg = tx_parse(tx_type_json);
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
@@ -134,8 +135,7 @@ __Z_INLINE void handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, 
         THROW(APDU_CODE_OK);
     }
 
-    // TODO: call parser for hash
-    const char *error_msg = tx_parse();
+    const char *error_msg = tx_parse(tx_type_hash);
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
@@ -148,6 +148,7 @@ __Z_INLINE void handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, 
     view_review_show(REVIEW_TXN);
     *flags |= IO_ASYNCH_REPLY;
 }
+
 
 __Z_INLINE void handleSignTransaction(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignTransaction\n");
@@ -226,7 +227,7 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
 
                 case INS_SIGN_KDA: {
                     CHECK_PIN_VALIDATED()
-                    handleSign(flags, tx, rx);
+                    handleSignJson(flags, tx, rx);
                     break;
                 }
 
