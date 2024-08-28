@@ -19,8 +19,34 @@
 #include "crypto_helper.h"
 #include "items.h"
 
+#define TRANSFER_FORMAT \
+    "{\"networkId\":\"%.*s\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"(coin.transfer " \
+    "\\\"k:%.*s\\\" \\\"k:%.*s\\\" %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":[" \
+    "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s],\"name\":\"coin.TRANSFER\"}," \
+    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":\"%.*s\"," \
+    "\"ttl\":\"%.*s\",\"gasLimit\":\"%.*s\",\"chainId\":\"%.*s\",\"gasPrice\":\"%.*s\"," \
+    "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
+
+#define TRANSFER_CREATE_FORMAT \
+    "{\"networkId\":\"%.*s\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\"," \
+    "\"keys\":[\"%.*s\"]}},\"code\":\"(coin.transfer-create \\\"k:%.*s\\\" \\\"k:%.*s\\\" " \
+    "(read-keyset \\\"ks\\\") %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":[" \
+    "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s],\"name\":\"coin.TRANSFER\"}," \
+    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":\"%.*s\"," \
+    "\"ttl\":\"%.*s\",\"gasLimit\":\"%.*s\",\"chainId\":\"%.*s\",\"gasPrice\":\"%.*s\"," \
+    "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
+
+#define TRANSFER_CROSSCHAIN_FORMAT \
+    "{\"networkId\":\"%.*s\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\"," \
+    "\"keys\":[\"%.*s\"]}},\"code\":\"(coin.transfer-crosschain \\\"k:%.*s\\\" \\\"k:%.*s\\\" " \
+    "(read-keyset \\\"ks\\\") \\\"%.*s\\\" %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":[" \
+    "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s,\"%.*s\"],\"name\":\"coin.TRANSFER_XCHAIN\"}," \
+    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":\"%.*s\"," \
+    "\"ttl\":\"%.*s\",\"gasLimit\":\"%.*s\",\"chainId\":\"%.*s\",\"gasPrice\":\"%.*s\"," \
+    "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
+
 static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte);
-static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t *bytes, uint16_t len);
+static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len);
 
 tx_json_t *parser_json_obj;
 tx_hash_t *parser_hash_obj;
@@ -205,7 +231,7 @@ bool items_isNullField(uint16_t json_token_index) {
     return (MEMCMP("null", json_all->buffer + token->start, token->end - token->start) == 0);
 }
         
-parser_error_t parser_createJsonTemplate(parser_context_t *ctx, uint8_t *jsonTemplate, uint16_t jsonTemplateLen) {
+parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen) {
     // read tx_type
     uint8_t tx_type = 0;
     parser_readSingleByte(ctx, &tx_type);
@@ -215,95 +241,177 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, uint8_t *jsonTem
     parser_readSingleByte(ctx, &recipient_len);
     // read recipient
     char *recipient = NULL;
-    parser_readBytes(ctx, (uint8_t *)recipient, recipient_len);
+    parser_readBytes(ctx, (uint8_t **)&recipient, recipient_len);
 
     // read recipient_chain_len
     uint8_t recipient_chain_len = 0;
     parser_readSingleByte(ctx, &recipient_chain_len);
     // read recipient_chain
     char *recipient_chain = NULL;
-    parser_readBytes(ctx, (uint8_t *)recipient_chain, recipient_chain_len);
+    parser_readBytes(ctx, (uint8_t **)&recipient_chain, recipient_chain_len);
 
     // read network_len
     uint8_t network_len = 0;
     parser_readSingleByte(ctx, &network_len);
     // read network
     char *network = NULL;
-    parser_readBytes(ctx, (uint8_t *)network, network_len);
+    parser_readBytes(ctx, (uint8_t **)&network, network_len);
 
     // read amount_len
     uint8_t amount_len = 0;
     parser_readSingleByte(ctx, &amount_len);
     // read amount
     char *amount = NULL;
-    parser_readBytes(ctx, (uint8_t *)amount, amount_len);
+    parser_readBytes(ctx, (uint8_t **)&amount, amount_len);
 
     // read namespace_len
     uint8_t namespace_len = 0;
     parser_readSingleByte(ctx, &namespace_len);
     // read namespace
     char *namespace = NULL;
-    parser_readBytes(ctx, (uint8_t *)namespace, namespace_len);
+    parser_readBytes(ctx, (uint8_t **)&namespace, namespace_len);
 
     // read module_len
     uint8_t module_len = 0;
     parser_readSingleByte(ctx, &module_len);
     // read module
     char *module = NULL;
-    parser_readBytes(ctx, (uint8_t *)module, module_len);
+    parser_readBytes(ctx, (uint8_t **)&module, module_len);
 
     // read gas_price_len
     uint8_t gas_price_len = 0;
     parser_readSingleByte(ctx, &gas_price_len);
     // read gas_price
     char *gas_price = NULL;
-    parser_readBytes(ctx, (uint8_t *)gas_price, gas_price_len);
+    parser_readBytes(ctx, (uint8_t **)&gas_price, gas_price_len);
 
     // read gas_limit_len
     uint8_t gas_limit_len = 0;
     parser_readSingleByte(ctx, &gas_limit_len);
     // read gas_limit
     char *gas_limit = NULL;
-    parser_readBytes(ctx, (uint8_t *)gas_limit, gas_limit_len);
+    parser_readBytes(ctx, (uint8_t **)&gas_limit, gas_limit_len);
 
     // read creation_time_len
     uint8_t creation_time_len = 0;
     parser_readSingleByte(ctx, &creation_time_len);
     // read creation_time
     char *creation_time = NULL;
-    parser_readBytes(ctx, (uint8_t *)creation_time, creation_time_len);
+    parser_readBytes(ctx, (uint8_t **)&creation_time, creation_time_len);
 
     // read chain_id_len
     uint8_t chain_id_len = 0;
     parser_readSingleByte(ctx, &chain_id_len);
     // read chain_id
     char *chain_id = NULL;
-    parser_readBytes(ctx, (uint8_t *)chain_id, chain_id_len);
+    parser_readBytes(ctx, (uint8_t **)&chain_id, chain_id_len);
 
     // read nonce_len
     uint8_t nonce_len = 0;
     parser_readSingleByte(ctx, &nonce_len);
     // read nonce
     char *nonce = NULL;
-    parser_readBytes(ctx, (uint8_t *)nonce, nonce_len);
+    parser_readBytes(ctx, (uint8_t **)&nonce, nonce_len);
 
     // read ttl_len
     uint8_t ttl_len = 0;
     parser_readSingleByte(ctx, &ttl_len);
     // read ttl
     char *ttl = NULL;
-    parser_readBytes(ctx, (uint8_t *)ttl, ttl_len);
+    parser_readBytes(ctx, (uint8_t **)&ttl, ttl_len);
 
     switch (tx_type) {
-        case TX_TYPE_TRANSFER:
-            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"(coin.transfer \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" $AMOUNT)\"}},\"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
+        case TX_TYPE_TRANSFER: {
+            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"(coin.transfer \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" $AMOUNT)\"}},
+            // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
+            // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
+
+            // TODO: Calculate pubkey
+            char pubkey[PUB_KEY_LENGTH] = {0};
+
+            snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_FORMAT,
+                network_len, network,
+                PUB_KEY_LENGTH, pubkey,
+                recipient_len, recipient,
+                amount_len, amount,
+                PUB_KEY_LENGTH, pubkey,
+                PUB_KEY_LENGTH, pubkey,
+                recipient_len, recipient,
+                amount_len, amount,
+                creation_time_len, creation_time,
+                ttl_len, ttl,
+                gas_limit_len, gas_limit,
+                chain_id_len, chain_id,
+                gas_price_len, gas_price,
+                PUB_KEY_LENGTH, pubkey,
+                nonce_len, nonce
+            );
+
+            *jsonTemplateLen = strlen(jsonTemplate);
             break;
-        case TX_TYPE_TRANSFER_CREATE:
-            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"$PUBKEY\"]}},\"code\":\"(coin.transfer-create \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" (read-keyset \\\"ks\\\") $AMOUNT)\"}},\"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
+        }
+        case TX_TYPE_TRANSFER_CREATE: {
+            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"$PUBKEY\"]}},\"code\":\"(coin.transfer-create \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" (read-keyset \\\"ks\\\") $AMOUNT)\"}},
+            // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
+            // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
+
+            // TODO: Calculate pubkey
+            char pubkey[PUB_KEY_LENGTH] = {0};
+
+            snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CREATE_FORMAT,
+                network_len, network,
+                PUB_KEY_LENGTH, pubkey,
+                PUB_KEY_LENGTH, pubkey,
+                recipient_len, recipient,
+                amount_len, amount,
+                PUB_KEY_LENGTH, pubkey,
+                PUB_KEY_LENGTH, pubkey,
+                recipient_len, recipient,
+                amount_len, amount,
+                creation_time_len, creation_time,
+                ttl_len, ttl,
+                gas_limit_len, gas_limit,
+                chain_id_len, chain_id,
+                gas_price_len, gas_price,
+                PUB_KEY_LENGTH, pubkey,
+                nonce_len, nonce
+            );
+
+            *jsonTemplateLen = strlen(jsonTemplate);
             break;
-        case TX_TYPE_TRANSFER_CROSSCHAIN:
-            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"$PUBKEY\"]}},\"code\":\"(coin.transfer-crosschain \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" (read-keyset \\\"ks\\\") \\\"$RECIPIENT_CHAIN\\\" $AMOUNT)\"}},\"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT,\"$RECIPIENT_CHAIN\"],\"name\":\"coin.TRANSFER_XCHAIN\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
+        }
+        case TX_TYPE_TRANSFER_CROSSCHAIN: {
+            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"$PUBKEY\"]}},\"code\":\"(coin.transfer-crosschain \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" (read-keyset \\\"ks\\\") \\\"$RECIPIENT_CHAIN\\\" $AMOUNT)\"}},
+            // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT,\"$RECIPIENT_CHAIN\"],\"name\":\"coin.TRANSFER_XCHAIN\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
+            // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
+
+            // TODO: Calculate pubkey
+            char pubkey[PUB_KEY_LENGTH] = {0};
+
+            snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CROSSCHAIN_FORMAT,
+                network_len, network,
+                PUB_KEY_LENGTH, pubkey,
+                PUB_KEY_LENGTH, pubkey,
+                recipient_len, recipient,
+                recipient_chain_len, recipient_chain,
+                amount_len, amount,
+                PUB_KEY_LENGTH, pubkey,
+                PUB_KEY_LENGTH, pubkey,
+                recipient_len, recipient,
+                amount_len, amount,
+                recipient_chain_len, recipient_chain,
+                creation_time_len, creation_time,
+                ttl_len, ttl,
+                gas_limit_len, gas_limit,
+                chain_id_len, chain_id,
+                gas_price_len, gas_price,
+                PUB_KEY_LENGTH, pubkey,
+                nonce_len, nonce
+            );
+
+            *jsonTemplateLen = strlen(jsonTemplate);
             break;
+        }
         default:
             return parser_no_data;
     }
@@ -322,12 +430,12 @@ static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte
     return parser_ok;
 }
 
-static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t *bytes, uint16_t len) {
+static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len) {
     if (ctx->offset + len > ctx->bufferLen) {
         return parser_unexpected_buffer_end;
     }
 
-    bytes = ctx->buffer + ctx->offset;
+    *bytes = (uint8_t *)(ctx->buffer + ctx->offset);
     ctx->offset += len;
     return parser_ok;
 }
