@@ -170,6 +170,7 @@ __Z_INLINE void handleSignTransaction(volatile uint32_t *flags, volatile uint32_
     view_review_show(REVIEW_TXN);
     *flags |= IO_ASYNCH_REPLY;
 }
+
 __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile uint32_t *tx) {
     G_io_apdu_buffer[0] = 0;
 

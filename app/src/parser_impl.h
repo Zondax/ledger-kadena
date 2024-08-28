@@ -25,6 +25,10 @@
 extern "C" {
 #endif
 
+#define TX_TYPE_TRANSFER 0
+#define TX_TYPE_TRANSFER_CREATE 1
+#define TX_TYPE_TRANSFER_CROSSCHAIN 2
+
 #define JSON_NETWORK_ID "networkId"
 #define JSON_META "meta"
 #define JSON_SIGNERS "signers"
@@ -61,6 +65,7 @@ parser_error_t parser_validateMetaField();
 parser_error_t parser_getTxName(uint16_t token_index);
 parser_error_t parser_getValidClist(uint16_t *clist_token_index, uint16_t *num_args);
 bool items_isNullField(uint16_t json_token_index);
+parser_error_t parser_createJsonTemplate(parser_context_t *ctx, uint8_t *jsonTemplate, uint16_t jsonTemplateLen);
 
 #ifdef __cplusplus
 }
