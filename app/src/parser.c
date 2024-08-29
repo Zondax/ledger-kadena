@@ -32,7 +32,7 @@
 tx_json_t tx_obj_json;
 tx_hash_t tx_obj_hash;
 
-char jsonTemplate[650];
+char jsonTemplate[900] = {0};
 uint16_t jsonTemplateLen;
 
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
@@ -62,7 +62,7 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
     } else if (tx_type == tx_type_transaction) {
         parser_createJsonTemplate(ctx, jsonTemplate, sizeof(jsonTemplate), &jsonTemplateLen);
         ctx->json = &tx_obj_json;
-        ctx->buffer = (const uint8_t *)&jsonTemplate;
+        ctx->buffer = (const uint8_t *) jsonTemplate;
         ctx->bufferLen = jsonTemplateLen;
 
         CHECK_ERROR(_read_json_tx(ctx));
@@ -70,7 +70,6 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
 
     ITEMS_TO_PARSER_ERROR(items_initItems())
     ITEMS_TO_PARSER_ERROR(items_storeItems(tx_type))
-
     return parser_ok;
 }
 

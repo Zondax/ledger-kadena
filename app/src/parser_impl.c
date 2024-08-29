@@ -18,13 +18,15 @@
 
 #include "crypto_helper.h"
 #include "items.h"
+#include "crypto.h"
+#include "zxformat.h"
 
 #define TRANSFER_FORMAT \
     "{\"networkId\":\"%.*s\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"(coin.transfer " \
     "\\\"k:%.*s\\\" \\\"k:%.*s\\\" %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":[" \
     "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s],\"name\":\"coin.TRANSFER\"}," \
-    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":\"%.*s\"," \
-    "\"ttl\":\"%.*s\",\"gasLimit\":\"%.*s\",\"chainId\":\"%.*s\",\"gasPrice\":\"%.*s\"," \
+    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":%.*s," \
+    "\"ttl\":%.*s,\"gasLimit\":%.*s,\"chainId\":\"%.*s\",\"gasPrice\":%.*s," \
     "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
 
 #define TRANSFER_CREATE_FORMAT \
@@ -32,8 +34,8 @@
     "\"keys\":[\"%.*s\"]}},\"code\":\"(coin.transfer-create \\\"k:%.*s\\\" \\\"k:%.*s\\\" " \
     "(read-keyset \\\"ks\\\") %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":[" \
     "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s],\"name\":\"coin.TRANSFER\"}," \
-    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":\"%.*s\"," \
-    "\"ttl\":\"%.*s\",\"gasLimit\":\"%.*s\",\"chainId\":\"%.*s\",\"gasPrice\":\"%.*s\"," \
+    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":%.*s," \
+    "\"ttl\":%.*s,\"gasLimit\":%.*s,\"chainId\":\"%.*s\",\"gasPrice\":%.*s," \
     "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
 
 #define TRANSFER_CROSSCHAIN_FORMAT \
@@ -41,8 +43,8 @@
     "\"keys\":[\"%.*s\"]}},\"code\":\"(coin.transfer-crosschain \\\"k:%.*s\\\" \\\"k:%.*s\\\" " \
     "(read-keyset \\\"ks\\\") \\\"%.*s\\\" %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":[" \
     "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s,\"%.*s\"],\"name\":\"coin.TRANSFER_XCHAIN\"}," \
-    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":\"%.*s\"," \
-    "\"ttl\":\"%.*s\",\"gasLimit\":\"%.*s\",\"chainId\":\"%.*s\",\"gasPrice\":\"%.*s\"," \
+    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":%.*s," \
+    "\"ttl\":%.*s,\"gasLimit\":%.*s,\"chainId\":\"%.*s\",\"gasPrice\":%.*s," \
     "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
 
 #define RECIPIENT_POS 0
@@ -183,6 +185,8 @@ parser_error_t parser_validateMetaField() {
 
             MEMZERO(meta_curr_key, sizeof(meta_curr_key));
         }
+    } else {
+        return parser_no_data;
     }
 
     return parser_ok;
@@ -259,15 +263,26 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
 
     for (int i = 0; i < 12; i++) {
         parser_readSingleByte(ctx, &chunks[i].len);
-        parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len);
+        if (chunks[i].len > 0) {
+            parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len);
+        } else {
+            chunks[i].data = "";
+        }
     }
 
-    char pubkey[PUB_KEY_LENGTH] = {0};
-    strncpy(pubkey, "foo", strlen("foo"));
+    char address[65] = {0};
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
+    char pubkey[PUB_KEY_LENGTH] = {0};
+    uint16_t pubkey_len = 0;
+
     if (crypto_fillAddress(pubkey, sizeof(pubkey), &pubkey_len) != zxerr_ok) {
-        return items_error;
+        return parser_unexpected_error;
     }
+
+    uint32_t address_len = array_to_hexstr(address, sizeof(address), pubkey, PUB_KEY_LENGTH);
+#else
+    // Dummy address for cpp_test
+    uint32_t address_len = snprintf(address, sizeof(address), "%s", "1234567890123456789012345678901234567890123456789012345678901234");
 #endif
 
     switch (tx_type) {
@@ -278,11 +293,11 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
 
             snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_FORMAT,
                 chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
                 chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
                 chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                PUB_KEY_LENGTH, pubkey,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
+                address_len, address,
                 chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
                 chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
                 chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
@@ -290,7 +305,7 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
                 chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
                 chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
                 chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
                 chunks[NONCE_POS].len, chunks[NONCE_POS].data
             );
 
@@ -304,12 +319,12 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
 
             snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CREATE_FORMAT,
                 chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-                PUB_KEY_LENGTH, pubkey,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
+                address_len, address,
                 chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
                 chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                PUB_KEY_LENGTH, pubkey,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
+                address_len, address,
                 chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
                 chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
                 chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
@@ -317,7 +332,7 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
                 chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
                 chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
                 chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
                 chunks[NONCE_POS].len, chunks[NONCE_POS].data
             );
 
@@ -331,13 +346,13 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
 
             snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CROSSCHAIN_FORMAT,
                 chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-                PUB_KEY_LENGTH, pubkey,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
+                address_len, address,
                 chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
                 chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
                 chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                PUB_KEY_LENGTH, pubkey,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
+                address_len, address,
                 chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
                 chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
                 chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
@@ -346,7 +361,7 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
                 chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
                 chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
                 chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
-                PUB_KEY_LENGTH, pubkey,
+                address_len, address,
                 chunks[NONCE_POS].len, chunks[NONCE_POS].data
             );
 
