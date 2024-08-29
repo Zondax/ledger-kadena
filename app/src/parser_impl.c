@@ -45,6 +45,19 @@
     "\"ttl\":\"%.*s\",\"gasLimit\":\"%.*s\",\"chainId\":\"%.*s\",\"gasPrice\":\"%.*s\"," \
     "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
 
+#define RECIPIENT_POS 0
+#define RECIPIENT_CHAIN_POS 1
+#define NETWORK_POS 2
+#define AMOUNT_POS 3
+#define NAMESPACE_POS 4
+#define MODULE_POS 5
+#define GAS_PRICE_POS 6
+#define GAS_LIMIT_POS 7
+#define CREATION_TIME_POS 8
+#define CHAIN_ID_POS 9
+#define NONCE_POS 10
+#define TTL_POS 11
+
 static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte);
 static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len);
 
@@ -236,89 +249,26 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
     uint8_t tx_type = 0;
     parser_readSingleByte(ctx, &tx_type);
 
-    // read recipient_len
-    uint8_t recipient_len = 0;
-    parser_readSingleByte(ctx, &recipient_len);
-    // read recipient
-    char *recipient = NULL;
-    parser_readBytes(ctx, (uint8_t **)&recipient, recipient_len);
+    typedef struct {
+        uint8_t len;
+        char *data;
+    }chunk_t;
 
-    // read recipient_chain_len
-    uint8_t recipient_chain_len = 0;
-    parser_readSingleByte(ctx, &recipient_chain_len);
-    // read recipient_chain
-    char *recipient_chain = NULL;
-    parser_readBytes(ctx, (uint8_t **)&recipient_chain, recipient_chain_len);
+    chunk_t chunks[12];
+    MEMZERO(chunks, sizeof(chunks));
 
-    // read network_len
-    uint8_t network_len = 0;
-    parser_readSingleByte(ctx, &network_len);
-    // read network
-    char *network = NULL;
-    parser_readBytes(ctx, (uint8_t **)&network, network_len);
+    for (int i = 0; i < 12; i++) {
+        parser_readSingleByte(ctx, &chunks[i].len);
+        parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len);
+    }
 
-    // read amount_len
-    uint8_t amount_len = 0;
-    parser_readSingleByte(ctx, &amount_len);
-    // read amount
-    char *amount = NULL;
-    parser_readBytes(ctx, (uint8_t **)&amount, amount_len);
-
-    // read namespace_len
-    uint8_t namespace_len = 0;
-    parser_readSingleByte(ctx, &namespace_len);
-    // read namespace
-    char *namespace = NULL;
-    parser_readBytes(ctx, (uint8_t **)&namespace, namespace_len);
-
-    // read module_len
-    uint8_t module_len = 0;
-    parser_readSingleByte(ctx, &module_len);
-    // read module
-    char *module = NULL;
-    parser_readBytes(ctx, (uint8_t **)&module, module_len);
-
-    // read gas_price_len
-    uint8_t gas_price_len = 0;
-    parser_readSingleByte(ctx, &gas_price_len);
-    // read gas_price
-    char *gas_price = NULL;
-    parser_readBytes(ctx, (uint8_t **)&gas_price, gas_price_len);
-
-    // read gas_limit_len
-    uint8_t gas_limit_len = 0;
-    parser_readSingleByte(ctx, &gas_limit_len);
-    // read gas_limit
-    char *gas_limit = NULL;
-    parser_readBytes(ctx, (uint8_t **)&gas_limit, gas_limit_len);
-
-    // read creation_time_len
-    uint8_t creation_time_len = 0;
-    parser_readSingleByte(ctx, &creation_time_len);
-    // read creation_time
-    char *creation_time = NULL;
-    parser_readBytes(ctx, (uint8_t **)&creation_time, creation_time_len);
-
-    // read chain_id_len
-    uint8_t chain_id_len = 0;
-    parser_readSingleByte(ctx, &chain_id_len);
-    // read chain_id
-    char *chain_id = NULL;
-    parser_readBytes(ctx, (uint8_t **)&chain_id, chain_id_len);
-
-    // read nonce_len
-    uint8_t nonce_len = 0;
-    parser_readSingleByte(ctx, &nonce_len);
-    // read nonce
-    char *nonce = NULL;
-    parser_readBytes(ctx, (uint8_t **)&nonce, nonce_len);
-
-    // read ttl_len
-    uint8_t ttl_len = 0;
-    parser_readSingleByte(ctx, &ttl_len);
-    // read ttl
-    char *ttl = NULL;
-    parser_readBytes(ctx, (uint8_t **)&ttl, ttl_len);
+    char pubkey[PUB_KEY_LENGTH] = {0};
+    strncpy(pubkey, "foo", strlen("foo"));
+#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
+    if (crypto_fillAddress(pubkey, sizeof(pubkey), &pubkey_len) != zxerr_ok) {
+        return items_error;
+    }
+#endif
 
     switch (tx_type) {
         case TX_TYPE_TRANSFER: {
@@ -326,25 +276,22 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
             // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
             // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
 
-            // TODO: Calculate pubkey
-            char pubkey[PUB_KEY_LENGTH] = {0};
-
             snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_FORMAT,
-                network_len, network,
+                chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
                 PUB_KEY_LENGTH, pubkey,
-                recipient_len, recipient,
-                amount_len, amount,
+                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
                 PUB_KEY_LENGTH, pubkey,
                 PUB_KEY_LENGTH, pubkey,
-                recipient_len, recipient,
-                amount_len, amount,
-                creation_time_len, creation_time,
-                ttl_len, ttl,
-                gas_limit_len, gas_limit,
-                chain_id_len, chain_id,
-                gas_price_len, gas_price,
+                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+                chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
+                chunks[TTL_POS].len, chunks[TTL_POS].data,
+                chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
+                chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
+                chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
                 PUB_KEY_LENGTH, pubkey,
-                nonce_len, nonce
+                chunks[NONCE_POS].len, chunks[NONCE_POS].data
             );
 
             *jsonTemplateLen = strlen(jsonTemplate);
@@ -355,26 +302,23 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
             // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
             // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
 
-            // TODO: Calculate pubkey
-            char pubkey[PUB_KEY_LENGTH] = {0};
-
             snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CREATE_FORMAT,
-                network_len, network,
+                chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
                 PUB_KEY_LENGTH, pubkey,
                 PUB_KEY_LENGTH, pubkey,
-                recipient_len, recipient,
-                amount_len, amount,
+                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
                 PUB_KEY_LENGTH, pubkey,
                 PUB_KEY_LENGTH, pubkey,
-                recipient_len, recipient,
-                amount_len, amount,
-                creation_time_len, creation_time,
-                ttl_len, ttl,
-                gas_limit_len, gas_limit,
-                chain_id_len, chain_id,
-                gas_price_len, gas_price,
+                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+                chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
+                chunks[TTL_POS].len, chunks[TTL_POS].data,
+                chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
+                chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
+                chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
                 PUB_KEY_LENGTH, pubkey,
-                nonce_len, nonce
+                chunks[NONCE_POS].len, chunks[NONCE_POS].data
             );
 
             *jsonTemplateLen = strlen(jsonTemplate);
@@ -385,28 +329,25 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
             // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT,\"$RECIPIENT_CHAIN\"],\"name\":\"coin.TRANSFER_XCHAIN\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
             // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
 
-            // TODO: Calculate pubkey
-            char pubkey[PUB_KEY_LENGTH] = {0};
-
             snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CROSSCHAIN_FORMAT,
-                network_len, network,
+                chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
                 PUB_KEY_LENGTH, pubkey,
                 PUB_KEY_LENGTH, pubkey,
-                recipient_len, recipient,
-                recipient_chain_len, recipient_chain,
-                amount_len, amount,
+                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+                chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
+                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
                 PUB_KEY_LENGTH, pubkey,
                 PUB_KEY_LENGTH, pubkey,
-                recipient_len, recipient,
-                amount_len, amount,
-                recipient_chain_len, recipient_chain,
-                creation_time_len, creation_time,
-                ttl_len, ttl,
-                gas_limit_len, gas_limit,
-                chain_id_len, chain_id,
-                gas_price_len, gas_price,
+                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+                chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
+                chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
+                chunks[TTL_POS].len, chunks[TTL_POS].data,
+                chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
+                chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
+                chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
                 PUB_KEY_LENGTH, pubkey,
-                nonce_len, nonce
+                chunks[NONCE_POS].len, chunks[NONCE_POS].data
             );
 
             *jsonTemplateLen = strlen(jsonTemplate);
@@ -415,7 +356,6 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
         default:
             return parser_no_data;
     }
-
 
     return parser_ok;
 }

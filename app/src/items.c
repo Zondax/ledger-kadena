@@ -73,7 +73,7 @@ items_error_t items_initItems() {
 item_array_t *items_getItemArray() { return &item_array; }
 
 items_error_t items_storeItems(tx_type_t tx_type) {
-    if (tx_type == tx_type_json) {
+    if (tx_type != tx_type_hash) {
         CHECK_ITEMS_ERROR(items_storeSigningTransaction());
 
         CHECK_ITEMS_ERROR(items_storeNetwork());
@@ -97,9 +97,7 @@ items_error_t items_storeItems(tx_type_t tx_type) {
         }
 
         CHECK_ITEMS_ERROR(items_checkTxLengths());
-    }
-
-    if (tx_type == tx_type_hash) {
+    } else {
         CHECK_ITEMS_ERROR(items_storeHashWarning());
     }
 
@@ -370,7 +368,7 @@ static items_error_t items_computeHash(tx_type_t tx_type) {
     if (tx_type == tx_type_hash) {
         tx_hash_t *hash_obj = parser_getParserHashObj();
         base64_encode(base64_hash, 44, (uint8_t *)hash_obj->tx, hash_obj->hash_len);
-    } else if (tx_type == tx_type_json) {
+    } else {
         if (blake2b_hash((uint8_t *)parser_getParserJsonObj()->json.buffer, parser_getParserJsonObj()->json.bufferLen, hash) !=
             zxerr_ok) {
             return items_error;
