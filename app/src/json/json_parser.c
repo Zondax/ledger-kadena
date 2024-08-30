@@ -208,7 +208,7 @@ parser_error_t json_parse(parsed_json_t *parsed_json, const char *buffer, uint16
 
     MEMZERO(parsed_json, sizeof(parsed_json_t));
     parsed_json->buffer = buffer;
-    parsed_json->bufferLen = strlen(buffer);
+    parsed_json->bufferLen = bufferLen;
 
     int32_t num_tokens =
         jsmn_parse(&parser, parsed_json->buffer, parsed_json->bufferLen, parsed_json->tokens, MAX_NUMBER_OF_TOKENS);
