@@ -72,7 +72,7 @@ describe.each(HASH_TEST_CASES)('Hash transactions', function (data) {
 })
 
 describe.each(TRANSACTIONS_TEST_CASES)('Tx transactions', function (data) {
-  test.only.each(models)('sign', async function (m) {
+  test.concurrent.each(models)('sign', async function (m) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })

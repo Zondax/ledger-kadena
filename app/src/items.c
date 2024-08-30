@@ -373,7 +373,7 @@ static items_error_t items_computeHash(tx_type_t tx_type) {
             zxerr_ok) {
             return items_error;
         }
-    
+
         base64_encode(base64_hash, 44, hash, sizeof(hash));
     }
 

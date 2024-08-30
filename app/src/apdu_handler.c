@@ -144,7 +144,7 @@ __Z_INLINE void handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, 
         THROW(APDU_CODE_DATA_INVALID);
     }
 
-    view_review_init(tx_getItem, tx_getNumItems, app_sign);
+    view_review_init(tx_getItem, tx_getNumItems, app_sign_hash);
     view_review_show(REVIEW_TXN);
     *flags |= IO_ASYNCH_REPLY;
 }
