@@ -266,13 +266,13 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
         if (chunks[i].len > 0) {
             parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len);
         } else {
-            chunks[i].data = "";
+            chunks[i].data = (char *)"";
         }
     }
 
     char address[65] = {0};
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
-    char pubkey[PUB_KEY_LENGTH] = {0};
+    uint8_t pubkey[PUB_KEY_LENGTH] = {0};
     uint16_t pubkey_len = 0;
 
     if (crypto_fillAddress(pubkey, sizeof(pubkey), &pubkey_len) != zxerr_ok) {

@@ -54,6 +54,10 @@ void tx_reset() { buffering_reset(); }
 
 uint32_t tx_append(unsigned char *buffer, uint32_t length) { return buffering_append(buffer, length); }
 
+char *tx_get_json_template_buffer() { return parser_get_json_template_buffer(); }
+
+uint16_t tx_get_json_template_buffer_len() { return parser_get_json_template_buffer_len(); }
+
 uint32_t tx_get_buffer_length() { return buffering_get_buffer()->pos; }
 
 uint8_t *tx_get_buffer() { return buffering_get_buffer()->data; }

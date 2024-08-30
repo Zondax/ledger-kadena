@@ -16,7 +16,7 @@
 
 import Zemu, { ButtonKind, zondaxMainmenuNavigation, isTouchDevice } from '@zondax/zemu'
 import { KadenaApp } from '@zondax/ledger-kadena'
-import { PATH, defaultOptions, models, simpleTxNormal } from './common'
+import { PATH, defaultOptions, models } from './common'
 import { blake2bFinal, blake2bInit, blake2bUpdate } from 'blakejs'
 
 import { HASH_TEST_CASES } from './testscases/hash'
@@ -41,21 +41,30 @@ describe.each(HASH_TEST_CASES)('Hash transactions', function (data) {
       const signatureRequest = app.signHash(data.path, data.hash)
 
       // // Wait until we are not in the main menu
-      // await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      // await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_${data.name}`)
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_${data.name}`)
 
-      // const signatureResponse = await signatureRequest
-      // console.log(signatureResponse)
+      const signatureResponse = await signatureRequest
 
-      // const rawHash =
-      //   typeof data.hash == 'string'
-      //     ? data.hash.length == 64
-      //       ? Buffer.from(data.hash, 'hex')
-      //       : Buffer.from(data.hash, 'base64')
-      //     : Buffer.from(data.hash)
-      // // Now verify the signature
-      // const valid = ed25519.verify(signatureResponse.signature, rawHash, pubKey)
-      // expect(valid).toEqual(true)
+      console.log({
+        signature: signatureResponse.signature.toString('hex')
+      })
+
+      const rawHash =
+        typeof data.hash == 'string'
+          ? data.hash.length == 64
+            ? Buffer.from(data.hash, 'hex')
+            : Buffer.from(data.hash, 'base64')
+          : Buffer.from(data.hash)
+
+      console.log({
+        rawHash: rawHash.toString('hex')
+      })
+
+      // Now verify the signature
+      const valid = ed25519.verify(signatureResponse.signature, rawHash, pubKey)
+
+      expect(valid).toEqual(true)
     } finally {
       await sim.close()
     }
@@ -73,24 +82,21 @@ describe.each(TRANSACTIONS_TEST_CASES)('Tx transactions', function (data) {
       const pubKey = responseAddr.pubkey
 
       // do not wait here... we need to navigate
-      const signatureRequest = app.signTransferTx(data.path, data)
+      const signatureRequest = app.signTransferTx(data.path, data.txParams)
 
       // // Wait until we are not in the main menu
-      // await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      // await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_${data.name}`)
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_${data.name}`)
 
-      // const signatureResponse = await signatureRequest
-      // console.log(signatureResponse)
+      const signatureResponse = await signatureRequest
 
-      // const rawHash =
-      //   typeof data.hash == 'string'
-      //     ? data.hash.length == 64
-      //       ? Buffer.from(data.hash, 'hex')
-      //       : Buffer.from(data.hash, 'base64')
-      //     : Buffer.from(data.hash)
-      // // Now verify the signature
-      // const valid = ed25519.verify(signatureResponse.signature, rawHash, pubKey)
-      // expect(valid).toEqual(true)
+      const context = blake2bInit(32)
+      blake2bUpdate(context, Buffer.from(data.blob))
+      const hash = Buffer.from(blake2bFinal(context))
+
+      // Now verify the signature
+      const valid = ed25519.verify(signatureResponse.signature, hash, pubKey)
+      expect(valid).toEqual(true)
     } finally {
       await sim.close()
     }

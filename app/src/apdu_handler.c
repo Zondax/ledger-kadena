@@ -166,7 +166,7 @@ __Z_INLINE void handleSignTransaction(volatile uint32_t *flags, volatile uint32_
         THROW(APDU_CODE_DATA_INVALID);
     }
 
-    view_review_init(tx_getItem, tx_getNumItems, app_sign);
+    view_review_init(tx_getItem, tx_getNumItems, app_sign_json_template);
     view_review_show(REVIEW_TXN);
     *flags |= IO_ASYNCH_REPLY;
 }

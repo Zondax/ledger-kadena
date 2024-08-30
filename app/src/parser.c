@@ -35,6 +35,14 @@ tx_hash_t tx_obj_hash;
 char jsonTemplate[900] = {0};
 uint16_t jsonTemplateLen;
 
+char *parser_get_json_template_buffer() {
+    return jsonTemplate;
+}
+
+uint16_t parser_get_json_template_buffer_len() {
+    return jsonTemplateLen;
+}
+
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
     ctx->offset = 0;
 
