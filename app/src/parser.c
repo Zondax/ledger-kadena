@@ -32,7 +32,12 @@
 tx_json_t tx_obj_json;
 tx_hash_t tx_obj_hash;
 
-char jsonTemplate[900] = {0};
+char 
+#if defined(TARGET_NANOS)
+// For nanos, jsonTemplate does not fit in RAM.
+__attribute__((section(".text"))) 
+#endif
+jsonTemplate[900] = {0};
 uint16_t jsonTemplateLen;
 
 char *parser_get_json_template_buffer() {

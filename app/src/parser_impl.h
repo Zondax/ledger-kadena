@@ -54,6 +54,11 @@ typedef struct {
 
 } parser_context_t;
 
+typedef struct {
+    uint8_t len;
+    char *data;
+} chunk_t;
+
 parser_error_t _read_json_tx(parser_context_t *c);
 parser_error_t _read_hash_tx(parser_context_t *c);
 tx_json_t *parser_getParserJsonObj();

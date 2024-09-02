@@ -62,6 +62,9 @@
 
 static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte);
 static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len);
+static parser_error_t parser_formatTxTransfer(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen, uint16_t address_len, char *address, chunk_t *chunks);
+static parser_error_t parser_formatTxTransferCreate(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen, uint16_t address_len, char *address, chunk_t *chunks);
+static parser_error_t parser_formatTxTransferCrosschain(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen, uint16_t address_len, char *address, chunk_t *chunks);
 
 tx_json_t *parser_json_obj;
 tx_hash_t *parser_hash_obj;
@@ -75,7 +78,6 @@ parser_error_t _read_json_tx(parser_context_t *c) {
     parser_json_obj->flags.cache_valid = 0;
     parser_json_obj->filter_msg_type_count = 0;
     parser_json_obj->filter_msg_from_count = 0;
-
     return parser_ok;
 }
 
@@ -253,13 +255,7 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
     uint8_t tx_type = 0;
     parser_readSingleByte(ctx, &tx_type);
 
-    typedef struct {
-        uint8_t len;
-        char *data;
-    }chunk_t;
-
     chunk_t chunks[12];
-    MEMZERO(chunks, sizeof(chunks));
 
     for (int i = 0; i < 12; i++) {
         parser_readSingleByte(ctx, &chunks[i].len);
@@ -287,85 +283,15 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
 
     switch (tx_type) {
         case TX_TYPE_TRANSFER: {
-            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"(coin.transfer \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" $AMOUNT)\"}},
-            // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
-            // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
-
-            snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_FORMAT,
-                chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-                address_len, address,
-                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
-                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                address_len, address,
-                address_len, address,
-                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
-                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
-                chunks[TTL_POS].len, chunks[TTL_POS].data,
-                chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
-                chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
-                chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
-                address_len, address,
-                chunks[NONCE_POS].len, chunks[NONCE_POS].data
-            );
-
-            *jsonTemplateLen = strlen(jsonTemplate);
+            parser_formatTxTransfer(jsonTemplate, jsonTemplateSize, jsonTemplateLen, address_len, address, chunks);
             break;
         }
         case TX_TYPE_TRANSFER_CREATE: {
-            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"$PUBKEY\"]}},\"code\":\"(coin.transfer-create \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" (read-keyset \\\"ks\\\") $AMOUNT)\"}},
-            // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
-            // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
-
-            snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CREATE_FORMAT,
-                chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-                address_len, address,
-                address_len, address,
-                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
-                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                address_len, address,
-                address_len, address,
-                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
-                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
-                chunks[TTL_POS].len, chunks[TTL_POS].data,
-                chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
-                chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
-                chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
-                address_len, address,
-                chunks[NONCE_POS].len, chunks[NONCE_POS].data
-            );
-
-            *jsonTemplateLen = strlen(jsonTemplate);
+            parser_formatTxTransferCreate(jsonTemplate, jsonTemplateSize, jsonTemplateLen, address_len, address, chunks);
             break;
         }
         case TX_TYPE_TRANSFER_CROSSCHAIN: {
-            // "{\"networkId\":\"$NETWORK\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"$PUBKEY\"]}},\"code\":\"(coin.transfer-crosschain \\\"k:$PUBKEY\\\" \\\"k:$RECIPIENT\\\" (read-keyset \\\"ks\\\") \\\"$RECIPIENT_CHAIN\\\" $AMOUNT)\"}},
-            // \"signers\":[{\"pubKey\":\"$PUBKEY\",\"clist\":[{\"args\":[\"k:$PUBKEY\",\"k:$RECIPIENT\",$AMOUNT,\"$RECIPIENT_CHAIN\"],\"name\":\"coin.TRANSFER_XCHAIN\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],
-            // \"meta\":{\"creationTime\":$CREATION_TIME,\"ttl\":$TTL,\"gasLimit\":$GAS_LIMIT,\"chainId\":\"$CHAIN_ID\",\"gasPrice\":$GAS_PRICE,\"sender\":\"k:$PUBKEY\"},\"nonce\":\"$NONCE\"}"
-
-            snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CROSSCHAIN_FORMAT,
-                chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-                address_len, address,
-                address_len, address,
-                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
-                chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
-                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                address_len, address,
-                address_len, address,
-                chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
-                chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-                chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
-                chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
-                chunks[TTL_POS].len, chunks[TTL_POS].data,
-                chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
-                chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
-                chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
-                address_len, address,
-                chunks[NONCE_POS].len, chunks[NONCE_POS].data
-            );
-
-            *jsonTemplateLen = strlen(jsonTemplate);
+            parser_formatTxTransferCrosschain(jsonTemplate, jsonTemplateSize, jsonTemplateLen, address_len, address, chunks);
             break;
         }
         default:
@@ -392,6 +318,303 @@ static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, u
 
     *bytes = (uint8_t *)(ctx->buffer + ctx->offset);
     ctx->offset += len;
+    return parser_ok;
+}
+
+static parser_error_t parser_formatTxTransfer(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen, uint16_t address_len, char *address, chunk_t *chunks) {
+#if !defined(TARGET_NANOS)
+    snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_FORMAT,
+        chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
+        address_len, address,
+        chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+        chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+        address_len, address,
+        address_len, address,
+        chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+        chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+        chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
+        chunks[TTL_POS].len, chunks[TTL_POS].data,
+        chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
+        chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
+        chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
+        address_len, address,
+        chunks[NONCE_POS].len, chunks[NONCE_POS].data
+    );
+
+    *jsonTemplateLen = strlen(jsonTemplate);
+#else
+    // For nanoS we need to use flash memory for the json template
+    char *ptr = jsonTemplate;
+
+    MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
+    ptr += 14;
+    MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
+    ptr += chunks[NETWORK_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"(coin.transfer \\\"k:", 58);
+    ptr += 58;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
+    ptr += 7;
+    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+    ptr += chunks[RECIPIENT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\\\" ", 3);
+    ptr += 3;
+    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+    ptr += chunks[AMOUNT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
+    ptr += 27;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
+    ptr += 23;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
+    ptr += 5;
+    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+    ptr += chunks[RECIPIENT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",", 2);
+    ptr += 2;
+    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+    ptr += chunks[AMOUNT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 82);
+    ptr += 82;
+    MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
+    ptr += chunks[CREATION_TIME_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
+    ptr += 7;
+    MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
+    ptr += chunks[TTL_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
+    ptr += chunks[GAS_LIMIT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
+    ptr += chunks[CHAIN_ID_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
+    ptr += 13;
+    MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
+    ptr += chunks[GAS_PRICE_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
+    ptr += 13;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
+    ptr += chunks[NONCE_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
+    ptr += 2;
+
+    *jsonTemplateLen = ptr - jsonTemplate;
+#endif
+
+    return parser_ok;
+}
+
+static parser_error_t parser_formatTxTransferCreate(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen, uint16_t address_len, char *address, chunk_t *chunks) {
+#if !defined(TARGET_NANOS)
+    snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CREATE_FORMAT,
+        chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
+        address_len, address,
+        address_len, address,
+        chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+        chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+        address_len, address,
+        address_len, address,
+        chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+        chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+        chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
+        chunks[TTL_POS].len, chunks[TTL_POS].data,
+        chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
+        chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
+        chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
+        address_len, address,
+        chunks[NONCE_POS].len, chunks[NONCE_POS].data
+    );
+
+    *jsonTemplateLen = strlen(jsonTemplate);
+#else
+    // For nanoS we need to use flash memory for the json template
+    char *ptr = jsonTemplate;
+
+    MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
+    ptr += 14;
+    MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
+    ptr += chunks[NETWORK_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 61);
+    ptr += 61;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\"]}},\"code\":\"(coin.transfer-create \\\"k:", 38);
+    ptr += 38;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
+    ptr += 7;
+    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+    ptr += chunks[RECIPIENT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\\\" (read-keyset \\\"ks\\\") ", 24);
+    ptr += 24;
+    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+    ptr += chunks[AMOUNT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
+    ptr += 27;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
+    ptr += 23;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
+    ptr += 5;
+    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+    ptr += chunks[RECIPIENT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",", 2);
+    ptr += 2;
+    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+    ptr += chunks[AMOUNT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 82);
+    ptr += 82;
+    MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
+    ptr += chunks[CREATION_TIME_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
+    ptr += 7;
+    MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
+    ptr += chunks[TTL_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
+    ptr += chunks[GAS_LIMIT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
+    ptr += chunks[CHAIN_ID_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
+    ptr += 13;
+    MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
+    ptr += chunks[GAS_PRICE_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
+    ptr += 13;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
+    ptr += chunks[NONCE_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
+    ptr += 2;
+
+    *jsonTemplateLen = ptr - jsonTemplate;
+#endif
+
+    return parser_ok;
+}
+
+static parser_error_t parser_formatTxTransferCrosschain(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen, uint16_t address_len, char *address, chunk_t *chunks) {
+#if !defined(TARGET_NANOS)
+    snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CROSSCHAIN_FORMAT,
+        chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
+        address_len, address,
+        address_len, address,
+        chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+        chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
+        chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+        address_len, address,
+        address_len, address,
+        chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data,
+        chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
+        chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
+        chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data,
+        chunks[TTL_POS].len, chunks[TTL_POS].data,
+        chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data,
+        chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data,
+        chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data,
+        address_len, address,
+        chunks[NONCE_POS].len, chunks[NONCE_POS].data
+    );
+
+    *jsonTemplateLen = strlen(jsonTemplate);
+#else
+    // For nanoS we need to use flash memory for the json template
+    char *ptr = jsonTemplate;
+
+    MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
+    ptr += 14;
+    MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
+    ptr += chunks[NETWORK_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 61);
+    ptr += 61;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\"]}},\"code\":\"(coin.transfer-crosschain \\\"k:", 45);
+    ptr += 45;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
+    ptr += 7;
+    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+    ptr += chunks[RECIPIENT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\\\" (read-keyset \\\"ks\\\") ", 25);
+    ptr += 25;
+    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+    ptr += chunks[AMOUNT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)" \\\"", 3);
+    ptr += 3;
+    MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
+    ptr += chunks[CHAIN_ID_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\")\"}},\"signers\":[{\"pubKey\":\"", 27);
+    ptr += 27;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
+    ptr += 23;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
+    ptr += 5;
+    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+    ptr += chunks[RECIPIENT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",", 2);
+    ptr += 2;
+    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+    ptr += chunks[AMOUNT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"coin.TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 82);
+    ptr += 82;
+    MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
+    ptr += chunks[CREATION_TIME_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
+    ptr += 7;
+    MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
+    ptr += chunks[TTL_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
+    ptr += chunks[GAS_LIMIT_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
+    ptr += chunks[CHAIN_ID_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
+    ptr += 13;
+    MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
+    ptr += chunks[GAS_PRICE_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
+    ptr += 13;
+    MEMCPY_NV((void *)ptr, address, address_len);
+    ptr += address_len;
+    MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
+    ptr += 12;
+    MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
+    ptr += chunks[NONCE_POS].len;
+    MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
+    ptr += 2;
+
+    *jsonTemplateLen = ptr - jsonTemplate;
+#endif
     return parser_ok;
 }
 
