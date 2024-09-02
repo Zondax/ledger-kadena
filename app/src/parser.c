@@ -37,7 +37,7 @@ char
 // For nanos, jsonTemplate does not fit in RAM.
 __attribute__((section(".text"))) 
 #endif
-jsonTemplate[900] = {0};
+jsonTemplate[1200] = {0};
 uint16_t jsonTemplateLen;
 
 char *parser_get_json_template_buffer() {
