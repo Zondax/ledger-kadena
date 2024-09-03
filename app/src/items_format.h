@@ -23,7 +23,8 @@
 #define WARNING_TEXT                                                                                                   \
     "UNSAFE TRANSACTION. This transaction's code was not recognized and does not limit capabilities for all signers. " \
     "Signing this transaction may make arbitrary actions on the chain including loss of all funds."
-#define HASH_WARNING_TEXT "Blind Signing a Transaction Hash is a very unusual operation. Do not continue unless you know what you are doing"
+#define HASH_WARNING_TEXT \
+    "Blind Signing a Transaction Hash is a very unusual operation. Do not continue unless you know what you are doing"
 #define CAUTION_TEXT "'meta' field of transaction not recognized"
 #define TX_TOO_LARGE_TEXT \
     "Transaction too large for Ledger to display.  PROCEED WITH GREAT CAUTION.  Do you want to continue?"

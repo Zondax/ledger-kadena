@@ -32,21 +32,17 @@
 tx_json_t tx_obj_json;
 tx_hash_t tx_obj_hash;
 
-char 
+char
 #if defined(TARGET_NANOS)
-// For nanos, jsonTemplate does not fit in RAM.
-__attribute__((section(".text"))) 
+    // For nanos, jsonTemplate does not fit in RAM.
+    __attribute__((section(".text")))
 #endif
-jsonTemplate[1200] = {0};
+    jsonTemplate[1200] = {0};
 uint16_t jsonTemplateLen;
 
-char *parser_get_json_template_buffer() {
-    return jsonTemplate;
-}
+char *parser_get_json_template_buffer() { return jsonTemplate; }
 
-uint16_t parser_get_json_template_buffer_len() {
-    return jsonTemplateLen;
-}
+uint16_t parser_get_json_template_buffer_len() { return jsonTemplateLen; }
 
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
     ctx->offset = 0;
@@ -75,11 +71,11 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
     } else if (tx_type == tx_type_transaction) {
         parser_createJsonTemplate(ctx, jsonTemplate, sizeof(jsonTemplate), &jsonTemplateLen);
         ctx->json = &tx_obj_json;
-        ctx->buffer = (const uint8_t *) jsonTemplate;
+        ctx->buffer = (const uint8_t *)jsonTemplate;
         ctx->bufferLen = jsonTemplateLen;
 
         CHECK_ERROR(_read_json_tx(ctx));
-    } 
+    }
 
     ITEMS_TO_PARSER_ERROR(items_initItems())
     ITEMS_TO_PARSER_ERROR(items_storeItems(tx_type))

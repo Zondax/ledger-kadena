@@ -24,14 +24,15 @@ extern "C" {
 #include <stdbool.h>
 
 #include "coin.h"
-#include "zxerror.h"
 #include "parser_txdef.h"
+#include "zxerror.h"
 
 extern uint32_t hdPath[HDPATH_LEN_DEFAULT];
 
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen);
 
-zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, tx_type_t tx_type);
+zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen,
+                    tx_type_t tx_type);
 
 #ifdef __cplusplus
 }

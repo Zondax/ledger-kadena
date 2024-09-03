@@ -19,9 +19,9 @@
 #include "coin.h"
 #include "crypto_helper.h"
 #include "cx.h"
+#include "parser_txdef.h"
 #include "zxformat.h"
 #include "zxmacros.h"
-#include "parser_txdef.h"
 
 uint32_t hdPath[HDPATH_LEN_DEFAULT];
 
@@ -63,7 +63,8 @@ catch_cx_error:
     return error;
 }
 
-zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, tx_type_t tx_type) {
+zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen,
+                    tx_type_t tx_type) {
     if (signature == NULL || message == NULL || signatureMaxlen < ED25519_SIGNATURE_SIZE || messageLen == 0) {
         return zxerr_invalid_crypto_settings;
     }

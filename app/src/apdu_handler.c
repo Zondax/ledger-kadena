@@ -25,11 +25,11 @@
 #include "app_main.h"
 #include "coin.h"
 #include "crypto.h"
+#include "parser_txdef.h"
 #include "tx.h"
 #include "view.h"
 #include "view_internal.h"
 #include "zxmacros.h"
-#include "parser_txdef.h"
 
 static bool tx_initialized = false;
 
@@ -149,13 +149,11 @@ __Z_INLINE void handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, 
     *flags |= IO_ASYNCH_REPLY;
 }
 
-
 __Z_INLINE void handleSignTransaction(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignTransaction\n");
     if (!process_chunk(tx, rx)) {
         THROW(APDU_CODE_OK);
     }
-
 
     const char *error_msg = tx_parse(tx_type_transaction);
     CHECK_APP_CANARY()
