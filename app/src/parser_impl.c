@@ -47,6 +47,14 @@
     "\"ttl\":%.*s,\"gasLimit\":%.*s,\"chainId\":\"%.*s\",\"gasPrice\":%.*s," \
     "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
 
+#if defined(TARGET_NANOS)
+#define INCREMENT_POINTER_NVM(inc) {  \
+    if (ptr + inc > jsonTemplate + jsonTemplateSize) \
+        return parser_unexpected_buffer_end; \
+    ptr += inc; \
+}
+#endif
+
 #define RECIPIENT_POS 0
 #define RECIPIENT_CHAIN_POS 1
 #define NETWORK_POS 2
@@ -356,77 +364,77 @@ static parser_error_t parser_formatTxTransfer(char *jsonTemplate, uint16_t jsonT
     char *ptr = jsonTemplate;
 
     MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
-    ptr += 14;
+    INCREMENT_POINTER_NVM(14)
     MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    ptr += chunks[NETWORK_POS].len;
+    INCREMENT_POINTER_NVM(chunks[NETWORK_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"", 39);
-    ptr += 39;
+    INCREMENT_POINTER_NVM(39)
     MEMCPY_NV((void *)ptr, (void *)"(", 1);
-    ptr += 1;
+    INCREMENT_POINTER_NVM(1)
     MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    ptr += strlen(namespace_and_module);
-    MEMCPY_NV((void *)ptr, (void *)".transfer\\\"k:", 13);
-    ptr += 13;
+    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
+    MEMCPY_NV((void *)ptr, (void *)".transfer \\\"k:", 14);
+    INCREMENT_POINTER_NVM(14)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
-    ptr += 7;
+    INCREMENT_POINTER_NVM(7)
     MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    ptr += chunks[RECIPIENT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\\\" ", 3);
-    ptr += 3;
+    INCREMENT_POINTER_NVM(3)
     MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    ptr += chunks[AMOUNT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
-    ptr += 27;
+    INCREMENT_POINTER_NVM(27)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
-    ptr += 23;
+    INCREMENT_POINTER_NVM(23)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
-    ptr += 5;
+    INCREMENT_POINTER_NVM(5)
     MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    ptr += chunks[RECIPIENT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\",", 2);
-    ptr += 2;
+    INCREMENT_POINTER_NVM(2)
     MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    ptr += chunks[AMOUNT_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"", 9);
-    ptr += 9;
+    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"", 10);
+    INCREMENT_POINTER_NVM(10)
     MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    ptr += strlen(namespace_and_module);
+    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
     MEMCPY_NV((void *)ptr, (void *)".TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 68);
-    ptr += 68;
+    INCREMENT_POINTER_NVM(68)
     MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
-    ptr += chunks[CREATION_TIME_POS].len;
+    INCREMENT_POINTER_NVM(chunks[CREATION_TIME_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
-    ptr += 7;
+    INCREMENT_POINTER_NVM(7)
     MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
-    ptr += chunks[TTL_POS].len;
+    INCREMENT_POINTER_NVM(chunks[TTL_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
-    ptr += chunks[GAS_LIMIT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[GAS_LIMIT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    ptr += chunks[CHAIN_ID_POS].len;
+    INCREMENT_POINTER_NVM(chunks[CHAIN_ID_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
-    ptr += 13;
+    INCREMENT_POINTER_NVM(13)
     MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
-    ptr += chunks[GAS_PRICE_POS].len;
+    INCREMENT_POINTER_NVM(chunks[GAS_PRICE_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
-    ptr += 13;
+    INCREMENT_POINTER_NVM(13)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
-    ptr += chunks[NONCE_POS].len;
+    INCREMENT_POINTER_NVM(chunks[NONCE_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
-    ptr += 2;
+    INCREMENT_POINTER_NVM(2)
 
     *jsonTemplateLen = ptr - jsonTemplate;
 #endif
@@ -470,79 +478,79 @@ static parser_error_t parser_formatTxTransferCreate(char *jsonTemplate, uint16_t
     char *ptr = jsonTemplate;
 
     MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
-    ptr += 14;
+    INCREMENT_POINTER_NVM(14)
     MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    ptr += chunks[NETWORK_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 61);
-    ptr += 61;
+    INCREMENT_POINTER_NVM(chunks[NETWORK_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 62);
+    INCREMENT_POINTER_NVM(62)
     MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    ptr += chunks[RECIPIENT_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"\"]}},\"code\":\"", 18);
-    ptr += 18;
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"\"]}},\"code\":\"(", 14);
+    INCREMENT_POINTER_NVM(14)
     MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    ptr += strlen(namespace_and_module);
-    MEMCPY_NV((void *)ptr, (void *)".transfer-create\\\"k:", 20);
-    ptr += 20;
+    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
+    MEMCPY_NV((void *)ptr, (void *)".transfer-create \\\"k:", 21);
+    INCREMENT_POINTER_NVM(21)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
-    ptr += 7;
+    INCREMENT_POINTER_NVM(7)
     MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    ptr += chunks[RECIPIENT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\\\" (read-keyset \\\"ks\\\") ", 24);
-    ptr += 24;
+    INCREMENT_POINTER_NVM(24)
     MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    ptr += chunks[AMOUNT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
-    ptr += 27;
+    INCREMENT_POINTER_NVM(27)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
-    ptr += 23;
+    INCREMENT_POINTER_NVM(23)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
-    ptr += 5;
+    INCREMENT_POINTER_NVM(5)
     MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    ptr += chunks[RECIPIENT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\",", 2);
-    ptr += 2;
+    INCREMENT_POINTER_NVM(2)
     MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    ptr += chunks[AMOUNT_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"", 9);
-    ptr += 9;
+    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"", 10);
+    INCREMENT_POINTER_NVM(10)
     MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    ptr += strlen(namespace_and_module);
+    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
     MEMCPY_NV((void *)ptr, (void *)".TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 68);
-    ptr += 68;
+    INCREMENT_POINTER_NVM(68)
     MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
-    ptr += chunks[CREATION_TIME_POS].len;
+    INCREMENT_POINTER_NVM(chunks[CREATION_TIME_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
-    ptr += 7;
+    INCREMENT_POINTER_NVM(7)
     MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
-    ptr += chunks[TTL_POS].len;
+    INCREMENT_POINTER_NVM(chunks[TTL_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
-    ptr += chunks[GAS_LIMIT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[GAS_LIMIT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    ptr += chunks[CHAIN_ID_POS].len;
+    INCREMENT_POINTER_NVM(chunks[CHAIN_ID_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
-    ptr += 13;
+    INCREMENT_POINTER_NVM(13)
     MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
-    ptr += chunks[GAS_PRICE_POS].len;
+    INCREMENT_POINTER_NVM(chunks[GAS_PRICE_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
-    ptr += 13;
+    INCREMENT_POINTER_NVM(13)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
-    ptr += chunks[NONCE_POS].len;
+    INCREMENT_POINTER_NVM(chunks[NONCE_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
-    ptr += 2;
+    INCREMENT_POINTER_NVM(2)
 
     *jsonTemplateLen = ptr - jsonTemplate;
 #endif
@@ -587,83 +595,87 @@ static parser_error_t parser_formatTxTransferCrosschain(char *jsonTemplate, uint
     char *ptr = jsonTemplate;
 
     MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
-    ptr += 14;
+    INCREMENT_POINTER_NVM(14)
     MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    ptr += chunks[NETWORK_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 61);
-    ptr += 61;
+    INCREMENT_POINTER_NVM(chunks[NETWORK_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 62);
+    INCREMENT_POINTER_NVM(62)
     MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    ptr += chunks[RECIPIENT_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"\"]}},\"code\":\"", 18);
-    ptr += 18;
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"\"]}},\"code\":\"(", 14);
+    INCREMENT_POINTER_NVM(14)
     MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    ptr += strlen(namespace_and_module);
-    MEMCPY_NV((void *)ptr, (void *)".transfer-crosschain\\\"k:", 24);
-    ptr += 24;
+    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
+    MEMCPY_NV((void *)ptr, (void *)".transfer-crosschain \\\"k:", 25);
+    INCREMENT_POINTER_NVM(25)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
-    ptr += 7;
+    INCREMENT_POINTER_NVM(7)
     MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    ptr += chunks[RECIPIENT_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"\\\" (read-keyset \\\"ks\\\") ", 25);
-    ptr += 25;
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"\\\" (read-keyset \\\"ks\\\") \\\"", 26);
+    INCREMENT_POINTER_NVM(26)
+    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_CHAIN_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"\\\" ", 3);
+    INCREMENT_POINTER_NVM(3)
     MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    ptr += chunks[AMOUNT_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)" \\\"", 3);
-    ptr += 3;
-    MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    ptr += chunks[CHAIN_ID_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"\")\"}},\"signers\":[{\"pubKey\":\"", 27);
-    ptr += 27;
+    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
+    INCREMENT_POINTER_NVM(27)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
-    ptr += 23;
+    INCREMENT_POINTER_NVM(23)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
-    ptr += 5;
+    INCREMENT_POINTER_NVM(5)
     MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    ptr += chunks[RECIPIENT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\",", 2);
-    ptr += 2;
+    INCREMENT_POINTER_NVM(2)
     MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    ptr += chunks[AMOUNT_POS].len;
-    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"", 9);
-    ptr += 9;
+    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)",\"", 2);
+    INCREMENT_POINTER_NVM(2)
+    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
+    INCREMENT_POINTER_NVM(chunks[RECIPIENT_CHAIN_POS].len)
+    MEMCPY_NV((void *)ptr, (void *)"\"],\"name\":\"", 11);
+    INCREMENT_POINTER_NVM(11)
     MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    ptr += strlen(namespace_and_module);
+    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
     MEMCPY_NV((void *)ptr, (void *)".TRANSFER_XCHAIN\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 75);
-    ptr += 82;
+    INCREMENT_POINTER_NVM(75)
     MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
-    ptr += chunks[CREATION_TIME_POS].len;
+    INCREMENT_POINTER_NVM(chunks[CREATION_TIME_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
-    ptr += 7;
+    INCREMENT_POINTER_NVM(7)
     MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
-    ptr += chunks[TTL_POS].len;
+    INCREMENT_POINTER_NVM(chunks[TTL_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
-    ptr += chunks[GAS_LIMIT_POS].len;
+    INCREMENT_POINTER_NVM(chunks[GAS_LIMIT_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    ptr += chunks[CHAIN_ID_POS].len;
+    INCREMENT_POINTER_NVM(chunks[CHAIN_ID_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
-    ptr += 13;
+    INCREMENT_POINTER_NVM(13)
     MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
-    ptr += chunks[GAS_PRICE_POS].len;
+    INCREMENT_POINTER_NVM(chunks[GAS_PRICE_POS].len)
     MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
-    ptr += 13;
+    INCREMENT_POINTER_NVM(13)
     MEMCPY_NV((void *)ptr, address, address_len);
-    ptr += address_len;
+    INCREMENT_POINTER_NVM(address_len)
     MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
-    ptr += 12;
+    INCREMENT_POINTER_NVM(12)
     MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
-    ptr += chunks[NONCE_POS].len;
+    INCREMENT_POINTER_NVM(chunks[NONCE_POS].len)
     MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
-    ptr += 2;
+    INCREMENT_POINTER_NVM(2)
 
     *jsonTemplateLen = ptr - jsonTemplate;
 #endif
