@@ -21,6 +21,7 @@
 #include <zxmacros.h>
 #include <zxtypes.h>
 
+#include "app_mode.h"
 #include "coin.h"
 #include "crypto.h"
 #include "crypto_helper.h"
@@ -60,6 +61,10 @@ parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer,
 }
 
 parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, tx_type_t tx_type) {
+    if (tx_type == tx_type_hash && !app_mode_expert()) {
+        return parser_expert_mode_required;
+    }
+
     CHECK_ERROR(parser_init_context(ctx, data, dataLen))
 
     if (tx_type == tx_type_json) {

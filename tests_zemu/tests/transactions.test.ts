@@ -38,6 +38,7 @@ describe.each(HASH_TEST_CASES)('Hash transactions', function (data) {
       const pubKey = responseAddr.pubkey
 
       // do not wait here... we need to navigate
+      await sim.toggleExpertMode()
       const signatureRequest = app.signHash(data.path, data.hash)
 
       // // Wait until we are not in the main menu
@@ -73,18 +74,18 @@ describe.each(TRANSACTIONS_TEST_CASES)('Tx transactions', function (data) {
       const responseAddr = await app.getAddressAndPubKey(data.path)
       const pubKey = responseAddr.pubkey
 
-      var signatureRequest = null;
+      var signatureRequest = null
       // do not wait here... we need to navigate
       if (data.type === TransferTxType.TRANSFER) {
         signatureRequest = app.signTransferTx(data.path, data.txParams)
       } else if (data.type === TransferTxType.TRANSFER_CREATE) {
         signatureRequest = app.signTransferCreateTx(data.path, data.txParams)
       } else if (data.type === TransferTxType.TRANSFER_CROSS_CHAIN) {
-        const transferCrossChainParams = data.txParams as TransferCrossChainTxParams;
+        const transferCrossChainParams = data.txParams as TransferCrossChainTxParams
         if (data.recipient_chainId !== undefined) {
-          transferCrossChainParams.recipient_chainId = data.recipient_chainId;
+          transferCrossChainParams.recipient_chainId = data.recipient_chainId
         } else {
-          throw new Error('recipient_chainId is undefined');
+          throw new Error('recipient_chainId is undefined')
         }
         signatureRequest = app.signTransferCrossChainTx(data.path, transferCrossChainParams)
       }

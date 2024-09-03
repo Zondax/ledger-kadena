@@ -687,6 +687,8 @@ const char *parser_getErrorDescription(parser_error_t err) {
             return "Unexpected chain";
         case parser_missing_field:
             return "missing field";
+        case parser_expert_mode_required:
+            return "Expert mode required for this operation";
 
         case parser_display_idx_out_of_range:
             return "display index out of range";

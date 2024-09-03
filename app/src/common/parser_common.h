@@ -37,6 +37,7 @@ typedef enum {
     parser_display_idx_out_of_range,
     parser_display_page_out_of_range,
     parser_unexpected_error,
+    parser_expert_mode_required,
 
     // Coin generic
     parser_unexpected_type,
