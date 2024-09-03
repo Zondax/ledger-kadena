@@ -46,20 +46,12 @@ describe.each(HASH_TEST_CASES)('Hash transactions', function (data) {
 
       const signatureResponse = await signatureRequest
 
-      console.log({
-        signature: signatureResponse.signature.toString('hex')
-      })
-
       const rawHash =
         typeof data.hash == 'string'
           ? data.hash.length == 64
             ? Buffer.from(data.hash, 'hex')
             : Buffer.from(data.hash, 'base64')
           : Buffer.from(data.hash)
-
-      console.log({
-        rawHash: rawHash.toString('hex')
-      })
 
       // Now verify the signature
       const valid = ed25519.verify(signatureResponse.signature, rawHash, pubKey)
@@ -72,7 +64,7 @@ describe.each(HASH_TEST_CASES)('Hash transactions', function (data) {
 })
 
 describe.each(TRANSACTIONS_TEST_CASES)('Tx transactions', function (data) {
-  test.only.each(models)('sign', async function (m) {
+  test.concurrent.each(models)('sign', async function (m) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
@@ -86,7 +78,6 @@ describe.each(TRANSACTIONS_TEST_CASES)('Tx transactions', function (data) {
       if (data.type === TransferTxType.TRANSFER) {
         signatureRequest = app.signTransferTx(data.path, data.txParams)
       } else if (data.type === TransferTxType.TRANSFER_CREATE) {
-        console.log('signTransferCreateTx')
         signatureRequest = app.signTransferCreateTx(data.path, data.txParams)
       } else if (data.type === TransferTxType.TRANSFER_CROSS_CHAIN) {
         const transferCrossChainParams = data.txParams as TransferCrossChainTxParams;
@@ -107,11 +98,6 @@ describe.each(TRANSACTIONS_TEST_CASES)('Tx transactions', function (data) {
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_${data.name}`)
 
       const signatureResponse = await signatureRequest
-
-      console.log({
-        signature: signatureResponse.signature.toString('hex'),
-        hash: signatureResponse.hash.toString('hex')
-      })
 
       // Now verify the signature
       const valid = ed25519.verify(signatureResponse.signature, signatureResponse.hash, pubKey)
