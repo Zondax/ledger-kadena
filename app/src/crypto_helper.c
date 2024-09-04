@@ -29,7 +29,6 @@ zxerr_t blake2b_hash(const unsigned char *in, unsigned int inLen, unsigned char 
 }
 
 zxerr_t blake2b_incremental(const unsigned char *in, unsigned int inLen, unsigned char *out, bool isNew, bool isLast) {
-    zemu_log("blake2b_incremental\n");
     static cx_blake2b_t ctx;
 
     if (isNew) {
