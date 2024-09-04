@@ -22,8 +22,8 @@ extern "C" {
 
 #include "parser_impl.h"
 
-char *parser_get_json_template_buffer();
-uint16_t parser_get_json_template_buffer_len();
+char *parser_get_json_inc_hash();
+uint16_t parser_get_json_inc_hash_len();
 
 const char *parser_getErrorDescription(parser_error_t err);
 const char *parser_getMsgPackTypeDescription(uint8_t type);

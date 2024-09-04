@@ -73,6 +73,7 @@ items_error_t items_initItems() {
 item_array_t *items_getItemArray() { return &item_array; }
 
 items_error_t items_storeItems(tx_type_t tx_type) {
+    zemu_log("items_storeItems\n");
     if (tx_type != tx_type_hash) {
         CHECK_ITEMS_ERROR(items_storeSigningTransaction());
 
@@ -82,21 +83,41 @@ items_error_t items_storeItems(tx_type_t tx_type) {
 
         CHECK_ITEMS_ERROR(items_storeKey());
 
-        CHECK_ITEMS_ERROR(items_validateSigners());
+        if (tx_type == tx_type_json) {
+            CHECK_ITEMS_ERROR(items_validateSigners());
 
-        CHECK_ITEMS_ERROR(items_storePayingGas());
+            CHECK_ITEMS_ERROR(items_storePayingGas());
 
-        CHECK_ITEMS_ERROR(items_storeAllTransfers());
+            CHECK_ITEMS_ERROR(items_storeAllTransfers());
 
-        if (parser_validateMetaField() != parser_ok) {
-            CHECK_ITEMS_ERROR(items_storeCaution());
+            if (parser_validateMetaField() != parser_ok) {
+                CHECK_ITEMS_ERROR(items_storeCaution());
+            } else {
+                CHECK_ITEMS_ERROR(items_storeChainId());
+
+                CHECK_ITEMS_ERROR(items_storeUsingGas());
+            }
+
+            CHECK_ITEMS_ERROR(items_checkTxLengths());
         } else {
+            CHECK_ITEMS_ERROR(items_storeGasItem(0));
+
+            switch (parser_getChunks()[0].data[0]) {
+                // TODO: Unknown transfers when namespace/module are custom
+                uint8_t num_of_transfers = 1;
+                case TX_TYPE_TRANSFER:
+                    items_storeTxItem(0, &num_of_transfers);
+                    break;
+                case TX_TYPE_TRANSFER_CROSSCHAIN:
+                    items_storeTxCrossItem(0, &num_of_transfers);
+                    break;
+            }
+
             CHECK_ITEMS_ERROR(items_storeChainId());
 
             CHECK_ITEMS_ERROR(items_storeUsingGas());
         }
 
-        CHECK_ITEMS_ERROR(items_checkTxLengths());
     } else {
         CHECK_ITEMS_ERROR(items_storeHashWarning());
     }
@@ -123,17 +144,23 @@ static items_error_t items_storeSigningTransaction() {
 }
 
 static items_error_t items_storeNetwork() {
-    uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_NETWORK_ID, curr_token_idx));
+    if (!parser_usingChunks()) {
+        uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
+        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    if (!items_isNullField(*curr_token_idx)) {
-        strcpy(item->key, "On Network");
-        item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
-        INCREMENT_NUM_ITEMS()
+        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_NETWORK_ID, curr_token_idx));
+
+        if (items_isNullField(*curr_token_idx)) {
+            // Network not found in JSON or found but null.
+            return items_ok;
+        }
     }
+
+    strcpy(item->key, "On Network");
+    item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
@@ -148,21 +175,29 @@ static items_error_t items_storeRequiringCapabilities() {
 }
 
 static items_error_t items_storeKey() {
-    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
-    uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_SIGNERS, curr_token_idx));
+    if (!parser_usingChunks()) {
+        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
+        uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
 
-    if (!items_isNullField(*curr_token_idx)) {
+        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_SIGNERS, curr_token_idx));
+
+        if (items_isNullField(*curr_token_idx)) {
+            return items_ok;
+        }
+
         PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx));
         PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_PUBKEY, curr_token_idx));
-        if (!items_isNullField(*curr_token_idx)) {
-            strcpy(item->key, "Of Key");
-            item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
-            INCREMENT_NUM_ITEMS()
+
+        if (items_isNullField(*curr_token_idx)) {
+            return items_ok;
         }
     }
+
+    strcpy(item->key, "Of Key");
+    item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
@@ -210,31 +245,19 @@ static items_error_t items_storePayingGas() {
     uint16_t token_index = 0;
     uint16_t name_token_index = 0;
     jsmntok_t *token;
+    uint16_t clist_element_count = 0;
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_SIGNERS, curr_token_idx));
+    if (parser_getValidClist(curr_token_idx, &clist_element_count) == parser_ok) {
+        for (uint16_t i = 0; i < (uint8_t)clist_element_count; i++) {
+            PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, i, &token_index));
 
-    if (!items_isNullField(*curr_token_idx)) {
-        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx));
+            PARSER_TO_ITEMS_ERROR(object_get_value(json_all, token_index, JSON_NAME, &name_token_index));
+            token = &(json_all->tokens[name_token_index]);
 
-        if (object_get_value(json_all, *curr_token_idx, JSON_CLIST, curr_token_idx) == parser_no_data) {
-            return items_ok;
-        }
-
-        if (!items_isNullField(*curr_token_idx)) {
-            uint16_t clist_element_count = 0;
-            PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, *curr_token_idx, &clist_element_count));
-
-            for (uint16_t i = 0; i < (uint8_t)clist_element_count; i++) {
-                PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, i, &token_index));
-
-                PARSER_TO_ITEMS_ERROR(object_get_value(json_all, token_index, JSON_NAME, &name_token_index));
-                token = &(json_all->tokens[name_token_index]);
-
-                if (MEMCMP("coin.GAS", json_all->buffer + token->start, token->end - token->start) == 0) {
-                    *curr_token_idx = token_index;
-                    items_storeGasItem(*curr_token_idx);
-                    return items_ok;
-                }
+            if (MEMCMP("coin.GAS", json_all->buffer + token->start, token->end - token->start) == 0) {
+                *curr_token_idx = token_index;
+                items_storeGasItem(*curr_token_idx);
+                return items_ok;
             }
         }
     }
@@ -313,38 +336,50 @@ static items_error_t items_storeCaution() {
 }
 
 static items_error_t items_storeChainId() {
-    uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, 0, JSON_META, curr_token_idx));
+    if (!parser_usingChunks()) {
+        uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
+        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    if (!items_isNullField(*curr_token_idx)) {
+        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, 0, JSON_META, curr_token_idx));
+
+        if (items_isNullField(*curr_token_idx)) {
+            return items_ok;
+        }
+
         PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_CHAIN_ID, curr_token_idx));
-        if (!items_isNullField(*curr_token_idx)) {
-            strcpy(item->key, "On Chain");
-            item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
-            INCREMENT_NUM_ITEMS()
+
+        if (items_isNullField(*curr_token_idx)) {
+            return items_ok;
         }
     }
+
+    strcpy(item->key, "On Chain");
+    item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
 
 static items_error_t items_storeUsingGas() {
-    uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, 0, JSON_META, curr_token_idx));
+    if (!parser_usingChunks()) {
+        uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
+        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    if (!items_isNullField(*curr_token_idx)) {
-        strcpy(item->key, "Using Gas");
-        item_array.toString[item_array.numOfItems] = items_gasToDisplayString;
-        INCREMENT_NUM_ITEMS()
-    } else {
-        *curr_token_idx = 0;
+        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, 0, JSON_META, curr_token_idx));
+
+        if (items_isNullField(*curr_token_idx)) {
+            *curr_token_idx = 0;
+            return items_ok;
+        }
     }
+
+    strcpy(item->key, "Using Gas");
+    item_array.toString[item_array.numOfItems] = items_gasToDisplayString;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
@@ -365,7 +400,7 @@ static items_error_t items_checkTxLengths() {
 }
 
 static items_error_t items_computeHash(tx_type_t tx_type) {
-    if (tx_type == tx_type_hash) {
+    if (tx_type == tx_type_hash || tx_type == tx_type_transaction) {
         tx_hash_t *hash_obj = parser_getParserHashObj();
         base64_encode(base64_hash, 44, (uint8_t *)hash_obj->tx, hash_obj->hash_len);
     } else {
@@ -412,65 +447,76 @@ static items_error_t items_storeSignForAddr() {
 }
 
 static items_error_t items_storeGasItem(uint16_t json_token_index) {
-    uint16_t token_index = 0;
-    uint16_t args_count = 0;
-    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
     item_t *item = &item_array.items[item_array.numOfItems];
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, json_token_index, "args", &token_index));
-    PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &args_count));
+    if (!parser_usingChunks()) {
+        uint16_t token_index = 0;
+        uint16_t args_count = 0;
+        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    if (args_count > 0) {
-        items_storeUnknownItem(args_count, token_index);
-    } else {
-        strcpy(item->key, "Paying Gas");
-        item_array.toString[item_array.numOfItems] = items_nothingToDisplayString;
-        INCREMENT_NUM_ITEMS()
+        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, json_token_index, "args", &token_index));
+        PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &args_count));
+
+        if (args_count > 0) {
+            items_storeUnknownItem(args_count, token_index);
+            return items_ok;
+        }
     }
+
+    strcpy(item->key, "Paying Gas");
+    item_array.toString[item_array.numOfItems] = items_nothingToDisplayString;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
 
 static items_error_t items_storeTxItem(uint16_t transfer_token_index, uint8_t *num_of_transfers) {
-    uint16_t token_index = 0;
-    uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
+    if (!parser_usingChunks()) {
+        uint16_t token_index = 0;
+        uint16_t num_of_args = 0;
+        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
+        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
 
-    if (num_of_args == 3) {
-        snprintf(item->key, sizeof(item->key), "Transfer %d", *num_of_transfers);
-        (*num_of_transfers)++;
-        item_array.toString[item_array.numOfItems] = items_transferToDisplayString;
-        INCREMENT_NUM_ITEMS()
-    } else {
-        items_storeUnknownItem(num_of_args, token_index);
+        PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
+
+        if (num_of_args != 3) {
+            items_storeUnknownItem(num_of_args, token_index);
+            return items_ok;
+        }
     }
+
+    snprintf(item->key, sizeof(item->key), "Transfer %d", *num_of_transfers);
+    (*num_of_transfers)++;
+    item_array.toString[item_array.numOfItems] = items_transferToDisplayString;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }
 
 static items_error_t items_storeTxCrossItem(uint16_t transfer_token_index, uint8_t *num_of_transfers) {
-    uint16_t token_index = 0;
-    uint16_t num_of_args = 0;
     item_t *item = &item_array.items[item_array.numOfItems];
-    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
+    if (!parser_usingChunks()) {
+        uint16_t token_index = 0;
+        uint16_t num_of_args = 0;
+        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
+        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, transfer_token_index, "args", &token_index));
 
-    if (num_of_args == 4) {
-        snprintf(item->key, sizeof(item->key), "Transfer %d", *num_of_transfers);
-        (*num_of_transfers)++;
-        item_array.toString[item_array.numOfItems] = items_crossTransferToDisplayString;
-        INCREMENT_NUM_ITEMS()
-    } else {
-        items_storeUnknownItem(num_of_args, token_index);
+        PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
+
+        if (num_of_args != 4) {
+            items_storeUnknownItem(num_of_args, token_index);
+        }
     }
+
+    snprintf(item->key, sizeof(item->key), "Transfer %d", *num_of_transfers);
+    (*num_of_transfers)++;
+    item_array.toString[item_array.numOfItems] = items_crossTransferToDisplayString;
+    INCREMENT_NUM_ITEMS()
 
     return items_ok;
 }

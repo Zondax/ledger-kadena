@@ -50,36 +50,21 @@
 #if defined(TARGET_NANOS)
 #define INCREMENT_POINTER_NVM(inc)                                                            \
     {                                                                                         \
-        if (ptr + inc > jsonTemplate + jsonTemplateSize) return parser_unexpected_buffer_end; \
+        if (ptr + inc > incrementalHash + jsonTemplateSize) return parser_unexpected_buffer_end; \
         ptr += inc;                                                                           \
     }
 #endif
 
-#define RECIPIENT_POS 0
-#define RECIPIENT_CHAIN_POS 1
-#define NETWORK_POS 2
-#define AMOUNT_POS 3
-#define NAMESPACE_POS 4
-#define MODULE_POS 5
-#define GAS_PRICE_POS 6
-#define GAS_LIMIT_POS 7
-#define CREATION_TIME_POS 8
-#define CHAIN_ID_POS 9
-#define NONCE_POS 10
-#define TTL_POS 11
-
-static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte);
+static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t **byte);
 static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len);
-static parser_error_t parser_formatTxTransfer(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen,
-                                              uint16_t address_len, char *address, chunk_t *chunks);
-static parser_error_t parser_formatTxTransferCreate(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen,
-                                                    uint16_t address_len, char *address, chunk_t *chunks);
-static parser_error_t parser_formatTxTransferCrosschain(char *jsonTemplate, uint16_t jsonTemplateSize,
-                                                        uint16_t *jsonTemplateLen, uint16_t address_len, char *address,
-                                                        chunk_t *chunks);
+static parser_error_t parser_hashTxTransfer(char *incrementalHash);
+static parser_error_t parser_hashTxTransferCreate(char *incrementalHash);
+static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash);
 
 tx_json_t *parser_json_obj;
 tx_hash_t *parser_hash_obj;
+
+chunk_t chunks[14];
 
 parser_error_t _read_json_tx(parser_context_t *c) {
     parser_json_obj = c->json;
@@ -94,6 +79,7 @@ parser_error_t _read_json_tx(parser_context_t *c) {
 }
 
 parser_error_t _read_hash_tx(parser_context_t *c) {
+    zemu_log("_read_hash_tx\n");
     parser_hash_obj = c->hash;
 
     MEMZERO(parser_hash_obj, sizeof(tx_hash_t));
@@ -107,6 +93,12 @@ parser_error_t _read_hash_tx(parser_context_t *c) {
 tx_json_t *parser_getParserJsonObj() { return parser_json_obj; }
 
 tx_hash_t *parser_getParserHashObj() { return parser_hash_obj; }
+
+chunk_t *parser_getChunks() { return chunks; }
+
+bool parser_usingChunks() {
+    return chunks[0].data != NULL;
+}
 
 parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
     parsed_json_t *json_all = &parser_json_obj->json;
@@ -262,16 +254,13 @@ bool items_isNullField(uint16_t json_token_index) {
     return (MEMCMP("null", json_all->buffer + token->start, token->end - token->start) == 0);
 }
 
-parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTemplate, uint16_t jsonTemplateSize,
-                                         uint16_t *jsonTemplateLen) {
-    // read tx_type
-    uint8_t tx_type = 0;
-    parser_readSingleByte(ctx, &tx_type);
+parser_error_t parser_readChunks(parser_context_t *ctx) {
+    zemu_log("parser_readChunks\n");
+    parser_readSingleByte(ctx, (uint8_t **)&chunks[0].data);
 
-    chunk_t chunks[12];
-
-    for (int i = 0; i < 12; i++) {
-        parser_readSingleByte(ctx, &chunks[i].len);
+    for (uint8_t i = 1; i < sizeof(chunks)/sizeof(chunk_t); i++) {
+        uint8_t *pLen = (uint8_t *)&chunks[i].len;
+        parser_readSingleByte(ctx, &pLen);
         if (chunks[i].len > 0) {
             parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len);
         } else {
@@ -279,6 +268,11 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
         }
     }
 
+    return parser_ok;
+}
+
+parser_error_t parser_computeIncrementalHash(char *incrementalHash) {
+    zemu_log("parser_computeIncrementalHash\n");
     char address[65] = {0};
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
     uint8_t pubkey[PUB_KEY_LENGTH] = {0};
@@ -295,17 +289,22 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
         snprintf(address, sizeof(address), "%s", "1234567890123456789012345678901234567890123456789012345678901234");
 #endif
 
+    strcpy(chunks[PUBKEY_POS].data, address);
+    chunks[PUBKEY_POS].len = address_len;
+
+    tx_type_t tx_type = (tx_type_t)chunks[TYPE_POS].data[0];
+
     switch (tx_type) {
         case TX_TYPE_TRANSFER: {
-            parser_formatTxTransfer(jsonTemplate, jsonTemplateSize, jsonTemplateLen, address_len, address, chunks);
+            parser_hashTxTransfer(incrementalHash);
             break;
         }
         case TX_TYPE_TRANSFER_CREATE: {
-            parser_formatTxTransferCreate(jsonTemplate, jsonTemplateSize, jsonTemplateLen, address_len, address, chunks);
+            parser_hashTxTransferCreate(incrementalHash);
             break;
         }
         case TX_TYPE_TRANSFER_CROSSCHAIN: {
-            parser_formatTxTransferCrosschain(jsonTemplate, jsonTemplateSize, jsonTemplateLen, address_len, address, chunks);
+            parser_hashTxTransferCrosschain(incrementalHash);
             break;
         }
         default:
@@ -315,12 +314,12 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx, char *jsonTempla
     return parser_ok;
 }
 
-static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte) {
+static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t **byte) {
     if (ctx->offset >= ctx->bufferLen) {
         return parser_unexpected_buffer_end;
     }
 
-    *byte = ctx->buffer[ctx->offset];
+    *byte = (uint8_t *)(ctx->buffer + ctx->offset);
     ctx->offset++;
     return parser_ok;
 }
@@ -335,8 +334,7 @@ static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, u
     return parser_ok;
 }
 
-static parser_error_t parser_formatTxTransfer(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen,
-                                              uint16_t address_len, char *address, chunk_t *chunks) {
+static parser_error_t parser_hashTxTransfer(char *incrementalHash) {
     char namespace_and_module[30] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
@@ -345,102 +343,47 @@ static parser_error_t parser_formatTxTransfer(char *jsonTemplate, uint16_t jsonT
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%s", "coin");
     }
 
-#if !defined(TARGET_NANOS)
-    snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_FORMAT, chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-             (int)strlen(namespace_and_module), namespace_and_module, address_len, address, chunks[RECIPIENT_POS].len,
-             chunks[RECIPIENT_POS].data, chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data, address_len, address, address_len,
-             address, chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data, chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data,
-             (int)strlen(namespace_and_module), namespace_and_module, chunks[CREATION_TIME_POS].len,
-             chunks[CREATION_TIME_POS].data, chunks[TTL_POS].len, chunks[TTL_POS].data, chunks[GAS_LIMIT_POS].len,
-             chunks[GAS_LIMIT_POS].data, chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data, chunks[GAS_PRICE_POS].len,
-             chunks[GAS_PRICE_POS].data, address_len, address, chunks[NONCE_POS].len, chunks[NONCE_POS].data);
-
-    *jsonTemplateLen = strlen(jsonTemplate);
-#else
-    // For nanoS we need to use flash memory for the json template
-    char *ptr = jsonTemplate;
-
-    MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
-    INCREMENT_POINTER_NVM(14)
-    MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    INCREMENT_POINTER_NVM(chunks[NETWORK_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"", 39);
-    INCREMENT_POINTER_NVM(39)
-    MEMCPY_NV((void *)ptr, (void *)"(", 1);
-    INCREMENT_POINTER_NVM(1)
-    MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
-    MEMCPY_NV((void *)ptr, (void *)".transfer \\\"k:", 14);
-    INCREMENT_POINTER_NVM(14)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
-    INCREMENT_POINTER_NVM(7)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\\\" ", 3);
-    INCREMENT_POINTER_NVM(3)
-    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
-    INCREMENT_POINTER_NVM(27)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
-    INCREMENT_POINTER_NVM(23)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
-    INCREMENT_POINTER_NVM(5)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",", 2);
-    INCREMENT_POINTER_NVM(2)
-    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"", 10);
-    INCREMENT_POINTER_NVM(10)
-    MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
-    MEMCPY_NV((void *)ptr, (void *)".TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 68);
-    INCREMENT_POINTER_NVM(68)
-    MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
-    INCREMENT_POINTER_NVM(chunks[CREATION_TIME_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
-    INCREMENT_POINTER_NVM(7)
-    MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
-    INCREMENT_POINTER_NVM(chunks[TTL_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[GAS_LIMIT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    INCREMENT_POINTER_NVM(chunks[CHAIN_ID_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
-    INCREMENT_POINTER_NVM(13)
-    MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
-    INCREMENT_POINTER_NVM(chunks[GAS_PRICE_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
-    INCREMENT_POINTER_NVM(13)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
-    INCREMENT_POINTER_NVM(chunks[NONCE_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
-    INCREMENT_POINTER_NVM(2)
-
-    *jsonTemplateLen = ptr - jsonTemplate;
-#endif
+    blake2b_incremental((uint8_t *)"{\"networkId\":\"", 14, (uint8_t *)incrementalHash, true, false);
+    blake2b_incremental((uint8_t *)chunks[NETWORK_POS].data, chunks[NETWORK_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"", 39, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"(", 1, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)".transfer \\\"k:", 14, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\\\" \\\"k:", 7, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\\\" ", 3, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"k:", 5, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",", 2, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"],\"name\":\"", 10, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)".TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 68, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"ttl\":", 7, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[TTL_POS].data, chunks[TTL_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"gasLimit\":", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"chainId\":\"", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"gasPrice\":", 13, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"sender\":\"k:", 13, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"},\"nonce\":\"", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"}", 2, (uint8_t *)incrementalHash, false, true);
 
     return parser_ok;
 }
 
-static parser_error_t parser_formatTxTransferCreate(char *jsonTemplate, uint16_t jsonTemplateSize, uint16_t *jsonTemplateLen,
-                                                    uint16_t address_len, char *address, chunk_t *chunks) {
+static parser_error_t parser_hashTxTransferCreate(char *incrementalHash) {
     char namespace_and_module[30] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
@@ -449,106 +392,48 @@ static parser_error_t parser_formatTxTransferCreate(char *jsonTemplate, uint16_t
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%s", "coin");
     }
 
-#if !defined(TARGET_NANOS)
-    snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CREATE_FORMAT, chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-             chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data, (int)strlen(namespace_and_module), namespace_and_module,
-             address_len, address, chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data, chunks[AMOUNT_POS].len,
-             chunks[AMOUNT_POS].data, address_len, address, address_len, address, chunks[RECIPIENT_POS].len,
-             chunks[RECIPIENT_POS].data, chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data, (int)strlen(namespace_and_module),
-             namespace_and_module, chunks[CREATION_TIME_POS].len, chunks[CREATION_TIME_POS].data, chunks[TTL_POS].len,
-             chunks[TTL_POS].data, chunks[GAS_LIMIT_POS].len, chunks[GAS_LIMIT_POS].data, chunks[CHAIN_ID_POS].len,
-             chunks[CHAIN_ID_POS].data, chunks[GAS_PRICE_POS].len, chunks[GAS_PRICE_POS].data, address_len, address,
-             chunks[NONCE_POS].len, chunks[NONCE_POS].data);
-
-    *jsonTemplateLen = strlen(jsonTemplate);
-#else
-    // For nanoS we need to use flash memory for the json template
-    char *ptr = jsonTemplate;
-
-    MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
-    INCREMENT_POINTER_NVM(14)
-    MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    INCREMENT_POINTER_NVM(chunks[NETWORK_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 62);
-    INCREMENT_POINTER_NVM(62)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\"]}},\"code\":\"(", 14);
-    INCREMENT_POINTER_NVM(14)
-    MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
-    MEMCPY_NV((void *)ptr, (void *)".transfer-create \\\"k:", 21);
-    INCREMENT_POINTER_NVM(21)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
-    INCREMENT_POINTER_NVM(7)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\\\" (read-keyset \\\"ks\\\") ", 24);
-    INCREMENT_POINTER_NVM(24)
-    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
-    INCREMENT_POINTER_NVM(27)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
-    INCREMENT_POINTER_NVM(23)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
-    INCREMENT_POINTER_NVM(5)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",", 2);
-    INCREMENT_POINTER_NVM(2)
-    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"],\"name\":\"", 10);
-    INCREMENT_POINTER_NVM(10)
-    MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
-    MEMCPY_NV((void *)ptr, (void *)".TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 68);
-    INCREMENT_POINTER_NVM(68)
-    MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
-    INCREMENT_POINTER_NVM(chunks[CREATION_TIME_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
-    INCREMENT_POINTER_NVM(7)
-    MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
-    INCREMENT_POINTER_NVM(chunks[TTL_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[GAS_LIMIT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    INCREMENT_POINTER_NVM(chunks[CHAIN_ID_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
-    INCREMENT_POINTER_NVM(13)
-    MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
-    INCREMENT_POINTER_NVM(chunks[GAS_PRICE_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
-    INCREMENT_POINTER_NVM(13)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
-    INCREMENT_POINTER_NVM(chunks[NONCE_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
-    INCREMENT_POINTER_NVM(2)
-
-    *jsonTemplateLen = ptr - jsonTemplate;
-#endif
+    blake2b_incremental((uint8_t *)"{\"networkId\":\"", 14, (uint8_t *)incrementalHash, true, false);
+    blake2b_incremental((uint8_t *)chunks[NETWORK_POS].data, chunks[NETWORK_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 62, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"]}},\"code\":\"(", 14, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)".transfer-create \\\"k:", 21, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\\\" \\\"k:", 7, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\\\" (read-keyset \\\"ks\\\") ", 24, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"k:", 5, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",", 2, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"],\"name\":\"", 10, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)".TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 68, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"ttl\":", 7, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[TTL_POS].data, chunks[TTL_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"gasLimit\":", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"chainId\":\"", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"gasPrice\":", 13, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"sender\":\"k:", 13, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"},\"nonce\":\"", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"}", 2, (uint8_t *)incrementalHash, false, true);
 
     return parser_ok;
 }
 
-static parser_error_t parser_formatTxTransferCrosschain(char *jsonTemplate, uint16_t jsonTemplateSize,
-                                                        uint16_t *jsonTemplateLen, uint16_t address_len, char *address,
-                                                        chunk_t *chunks) {
+static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash) {
     char namespace_and_module[30] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
@@ -556,109 +441,48 @@ static parser_error_t parser_formatTxTransferCrosschain(char *jsonTemplate, uint
     } else {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%s", "coin");
     }
-#if !defined(TARGET_NANOS)
-    snprintf(jsonTemplate, jsonTemplateSize, TRANSFER_CROSSCHAIN_FORMAT, chunks[NETWORK_POS].len, chunks[NETWORK_POS].data,
-             chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data, (int)strlen(namespace_and_module), namespace_and_module,
-             address_len, address, chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_CHAIN_POS].len,
-             chunks[RECIPIENT_CHAIN_POS].data, chunks[AMOUNT_POS].len, chunks[AMOUNT_POS].data, address_len, address,
-             address_len, address, chunks[RECIPIENT_POS].len, chunks[RECIPIENT_POS].data, chunks[AMOUNT_POS].len,
-             chunks[AMOUNT_POS].data, chunks[RECIPIENT_CHAIN_POS].len, chunks[RECIPIENT_CHAIN_POS].data,
-             (int)strlen(namespace_and_module), namespace_and_module, chunks[CREATION_TIME_POS].len,
-             chunks[CREATION_TIME_POS].data, chunks[TTL_POS].len, chunks[TTL_POS].data, chunks[GAS_LIMIT_POS].len,
-             chunks[GAS_LIMIT_POS].data, chunks[CHAIN_ID_POS].len, chunks[CHAIN_ID_POS].data, chunks[GAS_PRICE_POS].len,
-             chunks[GAS_PRICE_POS].data, address_len, address, chunks[NONCE_POS].len, chunks[NONCE_POS].data);
 
-    *jsonTemplateLen = strlen(jsonTemplate);
-#else
-    // For nanoS we need to use flash memory for the json template
-    char *ptr = jsonTemplate;
-
-    MEMCPY_NV((void *)ptr, (void *)"{\"networkId\":\"", 14);
-    INCREMENT_POINTER_NVM(14)
-    MEMCPY_NV((void *)ptr, chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    INCREMENT_POINTER_NVM(chunks[NETWORK_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 62);
-    INCREMENT_POINTER_NVM(62)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\"]}},\"code\":\"(", 14);
-    INCREMENT_POINTER_NVM(14)
-    MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
-    MEMCPY_NV((void *)ptr, (void *)".transfer-crosschain \\\"k:", 25);
-    INCREMENT_POINTER_NVM(25)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\\\" \\\"k:", 7);
-    INCREMENT_POINTER_NVM(7)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\\\" (read-keyset \\\"ks\\\") \\\"", 26);
-    INCREMENT_POINTER_NVM(26)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_CHAIN_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\\\" ", 3);
-    INCREMENT_POINTER_NVM(3)
-    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
-    INCREMENT_POINTER_NVM(27)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"clist\":[{\"args\":[\"k:", 23);
-    INCREMENT_POINTER_NVM(23)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"k:", 5);
-    INCREMENT_POINTER_NVM(5)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",", 2);
-    INCREMENT_POINTER_NVM(2)
-    MEMCPY_NV((void *)ptr, chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[AMOUNT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"", 2);
-    INCREMENT_POINTER_NVM(2)
-    MEMCPY_NV((void *)ptr, chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
-    INCREMENT_POINTER_NVM(chunks[RECIPIENT_CHAIN_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\"],\"name\":\"", 11);
-    INCREMENT_POINTER_NVM(11)
-    MEMCPY_NV((void *)ptr, namespace_and_module, strlen(namespace_and_module));
-    INCREMENT_POINTER_NVM(strlen(namespace_and_module))
-    MEMCPY_NV((void *)ptr,
-              (void *)".TRANSFER_XCHAIN\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 75);
-    INCREMENT_POINTER_NVM(75)
-    MEMCPY_NV((void *)ptr, chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
-    INCREMENT_POINTER_NVM(chunks[CREATION_TIME_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"ttl\":", 7);
-    INCREMENT_POINTER_NVM(7)
-    MEMCPY_NV((void *)ptr, chunks[TTL_POS].data, chunks[TTL_POS].len);
-    INCREMENT_POINTER_NVM(chunks[TTL_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"gasLimit\":", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
-    INCREMENT_POINTER_NVM(chunks[GAS_LIMIT_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"chainId\":\"", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    INCREMENT_POINTER_NVM(chunks[CHAIN_ID_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\",\"gasPrice\":", 13);
-    INCREMENT_POINTER_NVM(13)
-    MEMCPY_NV((void *)ptr, chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
-    INCREMENT_POINTER_NVM(chunks[GAS_PRICE_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)",\"sender\":\"k:", 13);
-    INCREMENT_POINTER_NVM(13)
-    MEMCPY_NV((void *)ptr, address, address_len);
-    INCREMENT_POINTER_NVM(address_len)
-    MEMCPY_NV((void *)ptr, (void *)"\"},\"nonce\":\"", 12);
-    INCREMENT_POINTER_NVM(12)
-    MEMCPY_NV((void *)ptr, chunks[NONCE_POS].data, chunks[NONCE_POS].len);
-    INCREMENT_POINTER_NVM(chunks[NONCE_POS].len)
-    MEMCPY_NV((void *)ptr, (void *)"\"}", 2);
-    INCREMENT_POINTER_NVM(2)
-
-    *jsonTemplateLen = ptr - jsonTemplate;
-#endif
+    blake2b_incremental((uint8_t *)"{\"networkId\":\"", 14, (uint8_t *)incrementalHash, true, false);
+    blake2b_incremental((uint8_t *)chunks[NETWORK_POS].data, chunks[NETWORK_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 62, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"]}},\"code\":\"(", 14, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)".transfer-crosschain \\\"k:", 25, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\\\" \\\"k:", 7, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\\\" (read-keyset \\\"ks\\\") \\\"", 26, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\\\" ", 3, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\",\"k:", 5, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",", 2, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"", 2, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"],\"name\":\"", 11, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)".TRANSFER_XCHAIN\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 75, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"ttl\":", 7, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[TTL_POS].data, chunks[TTL_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"gasLimit\":", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"chainId\":\"", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"gasPrice\":", 13, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)",\"sender\":\"k:", 13, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"},\"nonce\":\"", 12, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)"\"}", 2, (uint8_t *)incrementalHash, false, true);
 
     return parser_ok;
 }

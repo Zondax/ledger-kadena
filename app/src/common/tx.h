@@ -34,11 +34,11 @@ uint32_t tx_append(unsigned char *buffer, uint32_t length);
 
 /// Returns a pointer to the JSON template buffer
 /// \return Pointer to the JSON template buffer
-char *tx_get_json_template_buffer();
+char *tx_get_json_template_hash();
 
 /// Returns the length of the JSON template buffer
 /// \return Length of the JSON template buffer
-uint16_t tx_get_json_template_buffer_len();
+uint16_t tx_get_json_template_hash_len();
 
 /// Returns size of the raw json transaction buffer
 /// \return
