@@ -31,32 +31,10 @@ items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t outVa
     uint16_t len = 0;
 
     if (parser_usingChunks()) {
-        if (MEMCMP(item.key, "Of Key", strlen("Of Key")) == 0) {
-            char address[65] = {0};
-            uint32_t address_len = 0;
-    
-#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
-            uint8_t pubkey[PUB_KEY_LENGTH] = {0};
-            uint16_t pubkey_len = 0;
-
-            if (crypto_fillAddress(pubkey, sizeof(pubkey), &pubkey_len) != zxerr_ok) {
-                return items_error;
-            }
-
-            address_len = array_to_hexstr(address, sizeof(address), pubkey, PUB_KEY_LENGTH);
-#else
-            // Dummy address for cpp_test
-            address_len =
-                snprintf(address, sizeof(address), "%s", "1234567890123456789012345678901234567890123456789012345678901234");
-#endif
-            len = address_len;
-            buffer = (uint8_t *)address;
-        } else {
-            uint8_t chunk_index;
-            CHECK_ITEMS_ERROR(items_findChunkIndex(item.key, &chunk_index));
-            len = parser_getChunks()[chunk_index].len;
-            buffer = (uint8_t *)parser_getChunks()[chunk_index].data;
-        }
+        uint8_t chunk_index;
+        CHECK_ITEMS_ERROR(items_findChunkIndex(item.key, &chunk_index));
+        len = parser_getChunks()[chunk_index].len;
+        buffer = (uint8_t *)parser_getChunks()[chunk_index].data;
     } else {
         const parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
         const jsmntok_t *token = &(json_all->tokens[item.json_token_index]);
@@ -147,38 +125,15 @@ items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t 
     uint8_t amount_len = 0;
     uint8_t to_len = 0;
     uint8_t from_len = 0;
-    uint16_t required_len = 0;
-    char address[65] = {0};
-    uint32_t address_len = 0;
     
     if (parser_usingChunks()) {
-#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
-    uint8_t pubkey[PUB_KEY_LENGTH] = {0};
-    uint16_t pubkey_len = 0;
-
-    if (crypto_fillAddress(pubkey, sizeof(pubkey), &pubkey_len) != zxerr_ok) {
-        return items_error;
-    }
-
-    address_len = array_to_hexstr(address, sizeof(address), pubkey, PUB_KEY_LENGTH);
-#else
-    // Dummy address for cpp_test
-    address_len =
-        snprintf(address, sizeof(address), "%s", "1234567890123456789012345678901234567890123456789012345678901234");
-#endif
         chunk_t *chunks = parser_getChunks();
         amount = chunks[AMOUNT_POS].data;
         amount_len = chunks[AMOUNT_POS].len;
         to = chunks[RECIPIENT_POS].data;
         to_len = chunks[RECIPIENT_POS].len;
-        from = address;
-        from_len = address_len;
-        required_len = amount_len + from_len + to_len + strlen(" from ") + strlen(" to ") + 4 * strlen("\"") + 2 * strlen("k:");
-
-        if (required_len > outValLen) {
-            return items_data_too_large;
-        }
-        snprintf(outVal, outValLen, "%.*s from \"k:%.*s\" to \"k:%.*s\"", amount_len, amount, from_len, from, to_len, to);
+        from = chunks[PUBKEY_POS].data;
+        from_len = chunks[PUBKEY_POS].len;
     } else {
         parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
         uint16_t item_token_index = item.json_token_index;
@@ -188,15 +143,15 @@ items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t 
         PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, &from, &from_len));
         PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, &to, &to_len));
         PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, &amount, &amount_len));
-        required_len = amount_len + from_len + to_len + strlen(" from ") + strlen(" to ") + 4 * strlen("\"");
-
-        if (required_len > outValLen) {
-            return items_data_too_large;
-        }
-
-        snprintf(outVal, outValLen, "%.*s from \"%.*s\" to \"%.*s\"", amount_len, amount, from_len, from, to_len, to);
     }
 
+    uint16_t required_len = amount_len + from_len + to_len + strlen(" from ") + strlen(" to ") + 4 * sizeof("\"");
+
+    if (required_len > outValLen) {
+        return items_data_too_large;
+    }
+
+    snprintf(outVal, outValLen, "%.*s from \"%.*s\" to \"%.*s\"", amount_len, amount, from_len, from, to_len, to);
 
     return items_ok;
 }
@@ -210,31 +165,15 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
     uint8_t to_len = 0;
     uint8_t from_len = 0;
     uint8_t chain_len = 0;
-    char address[65] = {0};
-    uint32_t address_len = 0;
-    
+
     if (parser_usingChunks()) {
-#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
-    uint8_t pubkey[PUB_KEY_LENGTH] = {0};
-    uint16_t pubkey_len = 0;
-
-    if (crypto_fillAddress(pubkey, sizeof(pubkey), &pubkey_len) != zxerr_ok) {
-        return items_error;
-    }
-
-    address_len = array_to_hexstr(address, sizeof(address), pubkey, PUB_KEY_LENGTH);
-#else
-    // Dummy address for cpp_test
-    address_len =
-        snprintf(address, sizeof(address), "%s", "1234567890123456789012345678901234567890123456789012345678901234");
-#endif
         chunk_t *chunks = parser_getChunks();
         amount = chunks[AMOUNT_POS].data;
         amount_len = chunks[AMOUNT_POS].len;
         to = chunks[RECIPIENT_POS].data;
         to_len = chunks[RECIPIENT_POS].len;
-        from = address;
-        from_len = address_len;
+        from = chunks[PUBKEY_POS].data;
+        from_len = chunks[PUBKEY_POS].len;
         chain = chunks[CHAIN_ID_POS].data;
         chain_len = chunks[CHAIN_ID_POS].len;
     } else {
@@ -425,6 +364,9 @@ items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *out
 static items_error_t items_findChunkIndex(const char *key, uint8_t *outPos) {
     if (MEMCMP(key, "On Network", strlen("On Network")) == 0) {
         *outPos = NETWORK_POS;
+        return items_ok;
+    } else if (MEMCMP(key, "Of Key", strlen("Of Key")) == 0) {
+        *outPos = PUBKEY_POS;
         return items_ok;
     } else if (MEMCMP(key, "On Chain", strlen("On Chain")) == 0) {
         *outPos = CHAIN_ID_POS;

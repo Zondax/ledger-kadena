@@ -56,6 +56,7 @@ extern "C" {
 #define CHAIN_ID_POS 10
 #define NONCE_POS 11
 #define TTL_POS 12
+#define PUBKEY_POS 13
 
 typedef struct {
     const uint8_t *buffer;

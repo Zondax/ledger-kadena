@@ -57,14 +57,14 @@
 
 static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t **byte);
 static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len);
-static parser_error_t parser_hashTxTransfer(char *incrementalHash, char *address, uint32_t address_len);
-static parser_error_t parser_hashTxTransferCreate(char *incrementalHash, char *address, uint32_t address_len);
-static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash, char *address, uint32_t address_len);
+static parser_error_t parser_hashTxTransfer(char *incrementalHash);
+static parser_error_t parser_hashTxTransferCreate(char *incrementalHash);
+static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash);
 
 tx_json_t *parser_json_obj;
 tx_hash_t *parser_hash_obj;
 
-chunk_t chunks[13];
+chunk_t chunks[14];
 
 parser_error_t _read_json_tx(parser_context_t *c) {
     parser_json_obj = c->json;
@@ -257,12 +257,10 @@ bool items_isNullField(uint16_t json_token_index) {
 parser_error_t parser_readChunks(parser_context_t *ctx) {
     zemu_log("parser_readChunks\n");
     parser_readSingleByte(ctx, (uint8_t **)&chunks[0].data);
-    chunks[0].len = 1;
 
     for (uint8_t i = 1; i < sizeof(chunks)/sizeof(chunk_t); i++) {
-        uint8_t *pLen = NULL;
+        uint8_t *pLen = (uint8_t *)&chunks[i].len;
         parser_readSingleByte(ctx, &pLen);
-        chunks[i].len = *pLen;
         if (chunks[i].len > 0) {
             parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len);
         } else {
@@ -291,26 +289,27 @@ parser_error_t parser_computeIncrementalHash(char *incrementalHash) {
         snprintf(address, sizeof(address), "%s", "1234567890123456789012345678901234567890123456789012345678901234");
 #endif
 
+    strcpy(chunks[PUBKEY_POS].data, address);
+    chunks[PUBKEY_POS].len = address_len;
+
     tx_type_t tx_type = (tx_type_t)chunks[TYPE_POS].data[0];
 
     switch (tx_type) {
         case TX_TYPE_TRANSFER: {
-            parser_hashTxTransfer(incrementalHash, address, address_len);
+            parser_hashTxTransfer(incrementalHash);
             break;
         }
         case TX_TYPE_TRANSFER_CREATE: {
-            parser_hashTxTransferCreate(incrementalHash, address, address_len);
+            parser_hashTxTransferCreate(incrementalHash);
             break;
         }
         case TX_TYPE_TRANSFER_CROSSCHAIN: {
-            parser_hashTxTransferCrosschain(incrementalHash, address, address_len);
+            parser_hashTxTransferCrosschain(incrementalHash);
             break;
         }
         default:
             return parser_no_data;
     }
-
-    MEMZERO(address, sizeof(address));
 
     return parser_ok;
 }
@@ -335,7 +334,7 @@ static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, u
     return parser_ok;
 }
 
-static parser_error_t parser_hashTxTransfer(char *incrementalHash, char *address, uint32_t address_len) {
+static parser_error_t parser_hashTxTransfer(char *incrementalHash) {
     char namespace_and_module[30] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
@@ -350,15 +349,15 @@ static parser_error_t parser_hashTxTransfer(char *incrementalHash, char *address
     blake2b_incremental((uint8_t *)"(", 1, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)".transfer \\\"k:", 14, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\\\" \\\"k:", 7, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\\\" ", 3, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\",\"k:", 5, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\",", 2, (uint8_t *)incrementalHash, false, false);
@@ -376,7 +375,7 @@ static parser_error_t parser_hashTxTransfer(char *incrementalHash, char *address
     blake2b_incremental((uint8_t *)",\"gasPrice\":", 13, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)",\"sender\":\"k:", 13, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\"},\"nonce\":\"", 12, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\"}", 2, (uint8_t *)incrementalHash, false, true);
@@ -384,7 +383,7 @@ static parser_error_t parser_hashTxTransfer(char *incrementalHash, char *address
     return parser_ok;
 }
 
-static parser_error_t parser_hashTxTransferCreate(char *incrementalHash, char *address, uint32_t address_len) {
+static parser_error_t parser_hashTxTransferCreate(char *incrementalHash) {
     char namespace_and_module[30] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
@@ -400,15 +399,15 @@ static parser_error_t parser_hashTxTransferCreate(char *incrementalHash, char *a
     blake2b_incremental((uint8_t *)"\"]}},\"code\":\"(", 14, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)".transfer-create \\\"k:", 21, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\\\" \\\"k:", 7, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\\\" (read-keyset \\\"ks\\\") ", 24, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\",\"k:", 5, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)",", 2, (uint8_t *)incrementalHash, false, false);
@@ -426,7 +425,7 @@ static parser_error_t parser_hashTxTransferCreate(char *incrementalHash, char *a
     blake2b_incremental((uint8_t *)",\"gasPrice\":", 13, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)",\"sender\":\"k:", 13, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\"},\"nonce\":\"", 12, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\"}", 2, (uint8_t *)incrementalHash, false, true);
@@ -434,7 +433,7 @@ static parser_error_t parser_hashTxTransferCreate(char *incrementalHash, char *a
     return parser_ok;
 }
 
-static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash, char *address, uint32_t address_len) {
+static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash) {
     char namespace_and_module[30] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
@@ -450,7 +449,7 @@ static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash, cha
     blake2b_incremental((uint8_t *)"\"]}},\"code\":\"(", 14, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)namespace_and_module, strlen(namespace_and_module), (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)".transfer-crosschain \\\"k:", 25, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\\\" \\\"k:", 7, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\\\" (read-keyset \\\"ks\\\") \\\"", 26, (uint8_t *)incrementalHash, false, false);
@@ -458,9 +457,9 @@ static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash, cha
     blake2b_incremental((uint8_t *)"\\\" ", 3, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\",\"k:", 5, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)",", 2, (uint8_t *)incrementalHash, false, false);
@@ -480,7 +479,7 @@ static parser_error_t parser_hashTxTransferCrosschain(char *incrementalHash, cha
     blake2b_incremental((uint8_t *)",\"gasPrice\":", 13, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)",\"sender\":\"k:", 13, (uint8_t *)incrementalHash, false, false);
-    blake2b_incremental((uint8_t *)address, address_len, (uint8_t *)incrementalHash, false, false);
+    blake2b_incremental((uint8_t *)chunks[PUBKEY_POS].data, chunks[PUBKEY_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\"},\"nonce\":\"", 12, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len, (uint8_t *)incrementalHash, false, false);
     blake2b_incremental((uint8_t *)"\"}", 2, (uint8_t *)incrementalHash, false, true);
