@@ -27,6 +27,7 @@
 #include "crypto_helper.h"
 #include "items.h"
 #include "parser_impl.h"
+#include "tx.h"
 
 static parser_error_t parser_getItemKey(uint8_t displayIdx, char *outKey, uint16_t outKeyLen);
 
@@ -34,18 +35,6 @@ static parser_error_t parser_getItemKey(uint8_t displayIdx, char *outKey, uint16
 
 tx_json_t tx_obj_json;
 tx_hash_t tx_obj_hash;
-
-char
-#if defined(TARGET_NANOS)
-    // For nanos, jsonTemplate does not fit in RAM.
-    __attribute__((section(".text")))
-#endif
-    jsonTemplate[1200] = {0};
-uint16_t jsonTemplateLen;
-
-char *parser_get_json_template_buffer() { return jsonTemplate; }
-
-uint16_t parser_get_json_template_buffer_len() { return jsonTemplateLen; }
 
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
     ctx->offset = 0;
@@ -76,10 +65,10 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
         ctx->hash = &tx_obj_hash;
         CHECK_ERROR(_read_hash_tx(ctx));
     } else if (tx_type == tx_type_transaction) {
-        parser_createJsonTemplate(ctx, jsonTemplate, sizeof(jsonTemplate), &jsonTemplateLen);
+        parser_createJsonTemplate(ctx);
         ctx->json = &tx_obj_json;
-        ctx->buffer = (const uint8_t *)jsonTemplate;
-        ctx->bufferLen = jsonTemplateLen;
+        ctx->buffer = tx_json_get_buffer();
+        ctx->bufferLen = tx_json_get_buffer_length();
 
         CHECK_ERROR(_read_json_tx(ctx));
     }

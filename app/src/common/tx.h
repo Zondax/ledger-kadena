@@ -16,7 +16,6 @@
 #pragma once
 
 #include "coin.h"
-#include "os.h"
 #include "parser_txdef.h"
 #include "zxerror.h"
 
@@ -32,13 +31,20 @@ void tx_reset();
 /// \return It returns an error message if the buffer is too small.
 uint32_t tx_append(unsigned char *buffer, uint32_t length);
 
+/// Appends buffer to the end of JSON template buffer
+/// JSON template buffer will grow until it reaches the maximum allowed size
+/// \param buffer
+/// \param length
+/// \return It returns an error message if the buffer is too small.
+uint32_t tx_json_append(unsigned char *buffer, uint32_t length);
+
 /// Returns a pointer to the JSON template buffer
 /// \return Pointer to the JSON template buffer
-char *tx_get_json_template_buffer();
+uint8_t *tx_json_get_buffer();
 
 /// Returns the length of the JSON template buffer
 /// \return Length of the JSON template buffer
-uint16_t tx_get_json_template_buffer_len();
+uint32_t tx_json_get_buffer_length();
 
 /// Returns size of the raw json transaction buffer
 /// \return

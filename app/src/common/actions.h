@@ -71,8 +71,8 @@ __Z_INLINE void app_sign_hash() {
 }
 
 __Z_INLINE void app_sign_json_template() {
-    const uint8_t *message = (uint8_t *)tx_get_json_template_buffer();
-    const uint16_t messageLength = tx_get_json_template_buffer_len();
+    const uint8_t *message = (uint8_t *)tx_json_get_buffer();
+    const uint16_t messageLength = tx_json_get_buffer_length();
 
     const zxerr_t err = crypto_sign(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength, tx_type_transaction);
 
