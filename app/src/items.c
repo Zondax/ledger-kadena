@@ -115,7 +115,7 @@ uint16_t items_getTotalItems() { return item_array.numOfItems; }
 static items_error_t items_storeSigningTransaction() {
     item_t *item = &item_array.items[item_array.numOfItems];
 
-    strcpy(item->key, "Signing");
+    item->key = key_signing;
     item_array.toString[item_array.numOfItems] = items_signingToDisplayString;
     INCREMENT_NUM_ITEMS()
 
@@ -130,7 +130,7 @@ static items_error_t items_storeNetwork() {
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_NETWORK_ID, curr_token_idx));
 
     if (!items_isNullField(*curr_token_idx)) {
-        strcpy(item->key, "On Network");
+        item->key = key_on_network;
         item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
         INCREMENT_NUM_ITEMS()
     }
@@ -140,7 +140,7 @@ static items_error_t items_storeNetwork() {
 
 static items_error_t items_storeRequiringCapabilities() {
     item_t *item = &item_array.items[item_array.numOfItems];
-    strcpy(item->key, "Requiring");
+    item->key = key_requiring;
     item_array.toString[item_array.numOfItems] = items_requiringToDisplayString;
     INCREMENT_NUM_ITEMS()
 
@@ -158,7 +158,7 @@ static items_error_t items_storeKey() {
         PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx));
         PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_PUBKEY, curr_token_idx));
         if (!items_isNullField(*curr_token_idx)) {
-            strcpy(item->key, "Of Key");
+            item->key = key_of_key;
             item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
             INCREMENT_NUM_ITEMS()
         }
@@ -176,7 +176,7 @@ static items_error_t items_validateSigners() {
     uint16_t clist_element_count = 0;
 
     if (parser_getValidClist(curr_token_idx, &clist_element_count) != parser_ok) {
-        strcpy(item->key, "Unscoped Signer");
+        item->key = key_unscoped_signer;
         *curr_token_idx = ofKey_item->json_token_index;
         item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
         INCREMENT_NUM_ITEMS()
@@ -190,7 +190,7 @@ static items_error_t items_validateSigners() {
         if (array_get_nth_element(json_all, clist_token_index, i, &token_index) == parser_ok) {
             if (parser_getTxName(token_index) == parser_name_tx_transfer) {
                 if (parser_findPubKeyInClist(ofKey_item->json_token_index) != parser_ok) {
-                    strcpy(item->key, "Unscoped Signer");
+                    item->key = key_unscoped_signer;
                     *curr_token_idx = ofKey_item->json_token_index;
                     item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
                     INCREMENT_NUM_ITEMS()
@@ -283,7 +283,7 @@ static items_error_t items_storeAllTransfers() {
     } else {
         // Non-existing/Null Signers or Clist
         item_t *item = &item_array.items[item_array.numOfItems];
-        strcpy(item->key, "WARNING");
+        item->key = key_warning;
         item_array.toString[item_array.numOfItems] = items_warningToDisplayString;
         INCREMENT_NUM_ITEMS()
         *curr_token_idx = 0;
@@ -295,7 +295,7 @@ static items_error_t items_storeAllTransfers() {
 static items_error_t items_storeHashWarning() {
     item_t *item = &item_array.items[item_array.numOfItems];
 
-    strcpy(item->key, "WARNING");
+    item->key = key_warning;
     item_array.toString[item_array.numOfItems] = items_hashWarningToDisplayString;
     INCREMENT_NUM_ITEMS()
 
@@ -305,7 +305,7 @@ static items_error_t items_storeHashWarning() {
 static items_error_t items_storeCaution() {
     item_t *item = &item_array.items[item_array.numOfItems];
 
-    strcpy(item->key, "CAUTION");
+    item->key = key_caution;
     item_array.toString[item_array.numOfItems] = items_cautionToDisplayString;
     INCREMENT_NUM_ITEMS()
 
@@ -322,7 +322,7 @@ static items_error_t items_storeChainId() {
     if (!items_isNullField(*curr_token_idx)) {
         PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_CHAIN_ID, curr_token_idx));
         if (!items_isNullField(*curr_token_idx)) {
-            strcpy(item->key, "On Chain");
+            item->key = key_on_chain;
             item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
             INCREMENT_NUM_ITEMS()
         }
@@ -339,7 +339,7 @@ static items_error_t items_storeUsingGas() {
     PARSER_TO_ITEMS_ERROR(object_get_value(json_all, 0, JSON_META, curr_token_idx));
 
     if (!items_isNullField(*curr_token_idx)) {
-        strcpy(item->key, "Using Gas");
+        item->key = key_using_gas;
         item_array.toString[item_array.numOfItems] = items_gasToDisplayString;
         INCREMENT_NUM_ITEMS()
     } else {
@@ -354,7 +354,7 @@ static items_error_t items_checkTxLengths() {
 
     for (uint8_t i = 0; i < item_array.numOfItems; i++) {
         if (!item_array.items[i].can_display) {
-            strcpy(item->key, "WARNING");
+            item->key = key_warning;
             item_array.toString[item_array.numOfItems] = items_txTooLargeToDisplayString;
             INCREMENT_NUM_ITEMS()
             return items_ok;
@@ -392,7 +392,7 @@ static items_error_t items_computeHash(tx_type_t tx_type) {
 static items_error_t items_storeHash() {
     item_t *item = &item_array.items[item_array.numOfItems];
 
-    strcpy(item->key, "Transaction hash");
+    item->key = key_transaction_hash;
 
     item_array.toString[item_array.numOfItems] = items_hashToDisplayString;
     INCREMENT_NUM_ITEMS()
@@ -404,7 +404,7 @@ static items_error_t items_storeSignForAddr() {
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
     item_t *item = &item_array.items[item_array.numOfItems];
 
-    strcpy(item->key, "Sign for Address");
+    item->key = key_sign_for_address;
     item_array.toString[item_array.numOfItems] = items_signForAddrToDisplayString;
     INCREMENT_NUM_ITEMS()
 #endif
@@ -423,7 +423,7 @@ static items_error_t items_storeGasItem(uint16_t json_token_index) {
     if (args_count > 0) {
         items_storeUnknownItem(args_count, token_index);
     } else {
-        strcpy(item->key, "Paying Gas");
+        item->key = key_paying_gas;
         item_array.toString[item_array.numOfItems] = items_nothingToDisplayString;
         INCREMENT_NUM_ITEMS()
     }
@@ -442,7 +442,7 @@ static items_error_t items_storeTxItem(uint16_t transfer_token_index, uint8_t *n
     PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
 
     if (num_of_args == 3) {
-        snprintf(item->key, sizeof(item->key), "Transfer %d", *num_of_transfers);
+        item->key = key_transfer;
         (*num_of_transfers)++;
         item_array.toString[item_array.numOfItems] = items_transferToDisplayString;
         INCREMENT_NUM_ITEMS()
@@ -464,7 +464,7 @@ static items_error_t items_storeTxCrossItem(uint16_t transfer_token_index, uint8
     PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
 
     if (num_of_args == 4) {
-        snprintf(item->key, sizeof(item->key), "Transfer %d", *num_of_transfers);
+        item->key = key_transfer;
         (*num_of_transfers)++;
         item_array.toString[item_array.numOfItems] = items_crossTransferToDisplayString;
         INCREMENT_NUM_ITEMS()
@@ -486,7 +486,7 @@ static items_error_t items_storeTxRotateItem(uint16_t transfer_token_index) {
     PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, token_index, &num_of_args));
 
     if (num_of_args == 1) {
-        snprintf(item->key, sizeof(item->key), "Rotate for account");
+        item->key = key_rotate;
         item_array.toString[item_array.numOfItems] = items_rotateToDisplayString;
         INCREMENT_NUM_ITEMS()
     } else {
@@ -500,7 +500,7 @@ static items_error_t items_storeUnknownItem(uint16_t num_of_args, uint16_t trans
     item_t *item = &item_array.items[item_array.numOfItems];
     parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
 
-    snprintf(item->key, sizeof(item->key), "Unknown Capability %d", item_array.numOfUnknownCapabilities);
+    item->key = key_unknown_capability;
     item_array.numOfUnknownCapabilities++;
     item_array.toString[item_array.numOfItems] = items_unknownCapabilityToDisplayString;
 

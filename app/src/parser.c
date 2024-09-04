@@ -28,6 +28,8 @@
 #include "items.h"
 #include "parser_impl.h"
 
+static parser_error_t parser_getItemKey(uint8_t displayIdx, char *outKey, uint16_t outKeyLen);
+
 #define MAX_ITEM_LENGTH_IN_PAGE 40
 
 tx_json_t tx_obj_json;
@@ -137,10 +139,89 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
 
     CHECK_ERROR(checkSanity(numItems, displayIdx))
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
+    CHECK_ERROR(parser_getItemKey(displayIdx, outKey, outKeyLen))
 
-    snprintf(outKey, outKeyLen, "%s", item_array->items[displayIdx].key);
     ITEMS_TO_PARSER_ERROR(item_array->toString[displayIdx](item_array->items[displayIdx], tempVal, sizeof(tempVal)));
     pageString(outVal, outValLen, tempVal, pageIdx, pageCount);
 
+    return parser_ok;
+}
+
+static parser_error_t parser_getItemKey(uint8_t displayIdx, char *outKey, uint16_t outKeyLen) {
+    item_array_t *item_array = items_getItemArray();
+    static uint8_t transfer_count = 0;
+    static uint8_t unk_cap_count = 0;
+    static uint8_t lastdisplayIdx = 0;
+    bool update_counts = false;
+
+    if (displayIdx == 0) {
+        transfer_count = 0;
+        unk_cap_count = 0;
+    }
+
+    if (lastdisplayIdx != displayIdx) {
+        update_counts = true;
+    }
+
+    lastdisplayIdx = displayIdx;
+
+    switch (item_array->items[displayIdx].key) {
+        case key_signing:
+            strncpy(outKey, "Signing", outKeyLen);
+            break;
+        case key_on_network:
+            strncpy(outKey, "On Network", outKeyLen);
+            break;
+        case key_requiring:
+            strncpy(outKey, "Requiring", outKeyLen);
+            break;
+        case key_of_key:
+            strncpy(outKey, "Of Key", outKeyLen);
+            break;
+        case key_unscoped_signer:
+            strncpy(outKey, "Unscoped Signer", outKeyLen);
+            break;
+        case key_warning:
+            strncpy(outKey, "WARNING", outKeyLen);
+            break;
+        case key_caution:
+            strncpy(outKey, "CAUTION", outKeyLen);
+            break;
+        case key_on_chain:
+            strncpy(outKey, "On Chain", outKeyLen);
+            break;
+        case key_using_gas:
+            strncpy(outKey, "Using Gas", outKeyLen);
+            break;
+        case key_chain_id:
+            strncpy(outKey, "Chain ID", outKeyLen);
+            break;
+        case key_paying_gas:
+            strncpy(outKey, "Paying Gas", outKeyLen);
+            break;
+        case key_transfer:
+            if (update_counts) {
+                transfer_count++;
+            }
+            snprintf(outKey, outKeyLen, "Transfer %d", transfer_count);
+            break;
+        case key_rotate:
+            strncpy(outKey, "Rotate for account", outKeyLen);
+            break;
+        case key_unknown_capability:
+            if (update_counts) {
+                unk_cap_count++;
+            }
+            snprintf(outKey, outKeyLen, "Unknown Capability %d", unk_cap_count);
+            break;
+        case key_transaction_hash:
+            strncpy(outKey, "Transaction hash", outKeyLen);
+            break;
+        case key_sign_for_address:
+            strncpy(outKey, "Sign for Address", outKeyLen);
+            break;
+        default:
+            break;
+    }
     return parser_ok;
 }

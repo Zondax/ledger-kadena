@@ -35,7 +35,7 @@
 // Context that keeps all the parsed data together. That includes:
 //  - parsed json tokens
 //  - re-created SendMsg struct with indices pointing to tokens in parsed json
-typedef struct {
+typedef struct __attribute__((packed)) {
     uint8_t isValid;
     uint32_t numberOfTokens;
     jsmntok_t tokens[MAX_NUMBER_OF_TOKENS];

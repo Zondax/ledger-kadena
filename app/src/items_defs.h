@@ -20,7 +20,6 @@
 #include "zxtypes.h"
 
 #define MAX_NUMBER_OF_ITEMS 25
-#define MAX_KEY_LENGTH 23  // Max length of key (screen title on display)
 
 #define CHECK_ITEMS_ERROR(__CALL)            \
     {                                        \
@@ -43,8 +42,27 @@
         if (__err != items_ok) return parser_unexpected_error; \
     }
 
-typedef struct {
-    char key[MAX_KEY_LENGTH];
+typedef enum {
+    key_signing,
+    key_on_network,
+    key_requiring,
+    key_of_key,
+    key_unscoped_signer,
+    key_warning,
+    key_caution,
+    key_on_chain,
+    key_using_gas,
+    key_chain_id,
+    key_paying_gas,
+    key_transfer,
+    key_rotate,
+    key_unknown_capability,
+    key_transaction_hash,
+    key_sign_for_address,
+} display_title_t;
+
+typedef struct __attribute__((packed)) {
+    display_title_t key;
     uint16_t json_token_index;
     bool_t can_display;
 } item_t;
@@ -57,7 +75,7 @@ typedef enum {
     items_error,
 } items_error_t;
 
-typedef struct {
+typedef struct __attribute__((packed)) {
     item_t items[MAX_NUMBER_OF_ITEMS];
     uint8_t numOfItems;
     uint8_t numOfUnknownCapabilities;
