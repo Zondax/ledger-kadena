@@ -37,7 +37,7 @@ extern "C" {
 #define BLAKE2B_HASH_SIZE 32
 
 zxerr_t blake2b_hash(const unsigned char *in, unsigned int inLen, unsigned char *out);
-zxerr_t blake2b_incremental(const unsigned char *in, unsigned int inLen, unsigned char *out, bool isNew, bool isLast);
+
 #ifdef __cplusplus
 }
 #endif

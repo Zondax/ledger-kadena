@@ -18,34 +18,12 @@
 
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
 #include "cx.h"
+
 zxerr_t blake2b_hash(const unsigned char *in, unsigned int inLen, unsigned char *out) {
     cx_blake2b_t ctx;
     if (cx_blake2b_init2_no_throw(&ctx, BLAKE2B_OUTPUT_LEN, NULL, 0, NULL, 0) != CX_OK ||
         cx_hash_no_throw(&ctx.header, CX_LAST, in, inLen, out, 32) != CX_OK) {
         return zxerr_invalid_crypto_settings;
-    }
-
-    return zxerr_ok;
-}
-
-zxerr_t blake2b_incremental(const unsigned char *in, unsigned int inLen, unsigned char *out, bool isNew, bool isLast) {
-    zemu_log("blake2b_incremental\n");
-    static cx_blake2b_t ctx;
-
-    if (isNew) {
-        if (cx_blake2b_init2_no_throw(&ctx, BLAKE2B_OUTPUT_LEN, NULL, 0, NULL, 0) != CX_OK) {
-            return zxerr_invalid_crypto_settings;
-        }
-    }
-
-    if (cx_hash_update(&ctx.header, in, inLen) != CX_OK) {
-        return zxerr_invalid_crypto_settings;
-    }
-
-    if (isLast) {
-        if (cx_hash_final(&ctx.header, out) != CX_OK) {
-            return zxerr_invalid_crypto_settings;
-        }
     }
 
     return zxerr_ok;

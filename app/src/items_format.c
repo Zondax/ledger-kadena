@@ -20,36 +20,21 @@
 
 #include "crypto.h"
 #include "parser.h"
-#include "parser_impl.h"
-
-static items_error_t items_findChunkIndex(const char *key, uint8_t *outPos);
 
 extern char base64_hash[45];
 
 items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t outValLen) {
-    uint8_t *buffer = NULL;
-    uint16_t len = 0;
+    const parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
+    const jsmntok_t *token = &(json_all->tokens[item.json_token_index]);
+    const uint16_t len = token->end - token->start;
 
-    if (parser_usingChunks()) {
-        uint8_t chunk_index;
-        CHECK_ITEMS_ERROR(items_findChunkIndex(item.key, &chunk_index));
-        len = parser_getChunks()[chunk_index].len;
-        buffer = (uint8_t *)parser_getChunks()[chunk_index].data;
-    } else {
-        const parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
-        const jsmntok_t *token = &(json_all->tokens[item.json_token_index]);
-        len = token->end - token->start;
+    if (len == 0) return items_length_zero;
 
-        if (len == 0) return items_length_zero;
-
-        if (len >= outValLen) {
-            return items_data_too_large;
-        }
-
-        buffer = (uint8_t *)json_all->buffer + token->start;
+    if (len >= outValLen) {
+        return items_data_too_large;
     }
 
-    snprintf(outVal, outValLen, "%.*s", len, buffer);
+    snprintf(outVal, outValLen, "%.*s", len, json_all->buffer + token->start);
 
     return items_ok;
 }
@@ -125,28 +110,16 @@ items_error_t items_transferToDisplayString(item_t item, char *outVal, uint16_t 
     uint8_t amount_len = 0;
     uint8_t to_len = 0;
     uint8_t from_len = 0;
-    
-    if (parser_usingChunks()) {
-        chunk_t *chunks = parser_getChunks();
-        amount = chunks[AMOUNT_POS].data;
-        amount_len = chunks[AMOUNT_POS].len;
-        to = chunks[RECIPIENT_POS].data;
-        to_len = chunks[RECIPIENT_POS].len;
-        from = chunks[PUBKEY_POS].data;
-        from_len = chunks[PUBKEY_POS].len;
-    } else {
-        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
-        uint16_t item_token_index = item.json_token_index;
-        uint16_t token_index = 0;
+    uint16_t token_index = 0;
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
+    uint16_t item_token_index = item.json_token_index;
 
-        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, "args", &token_index));
-        PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, &from, &from_len));
-        PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, &to, &to_len));
-        PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, &amount, &amount_len));
-    }
+    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, "args", &token_index));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, &from, &from_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, &to, &to_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, &amount, &amount_len));
 
     uint16_t required_len = amount_len + from_len + to_len + strlen(" from ") + strlen(" to ") + 4 * sizeof("\"");
-
     if (required_len > outValLen) {
         return items_data_too_large;
     }
@@ -165,32 +138,18 @@ items_error_t items_crossTransferToDisplayString(item_t item, char *outVal, uint
     uint8_t to_len = 0;
     uint8_t from_len = 0;
     uint8_t chain_len = 0;
+    uint16_t token_index = 0;
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
+    uint16_t item_token_index = item.json_token_index;
 
-    if (parser_usingChunks()) {
-        chunk_t *chunks = parser_getChunks();
-        amount = chunks[AMOUNT_POS].data;
-        amount_len = chunks[AMOUNT_POS].len;
-        to = chunks[RECIPIENT_POS].data;
-        to_len = chunks[RECIPIENT_POS].len;
-        from = chunks[PUBKEY_POS].data;
-        from_len = chunks[PUBKEY_POS].len;
-        chain = chunks[CHAIN_ID_POS].data;
-        chain_len = chunks[CHAIN_ID_POS].len;
-    } else {
-        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
-        uint16_t item_token_index = item.json_token_index;
-        uint16_t token_index = 0;
-
-        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, "args", &token_index));
-        PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, &from, &from_len));
-        PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, &to, &to_len));
-        PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, &amount, &amount_len));
-        PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 3, &chain, &chain_len));
-    }
+    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, "args", &token_index));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 0, &from, &from_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 1, &to, &to_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 2, &amount, &amount_len));
+    PARSER_TO_ITEMS_ERROR(parser_arrayElementToString(token_index, 3, &chain, &chain_len));
 
     uint16_t required_len = amount_len + from_len + to_len + chain_len + strlen("Cross-chain ") + strlen(" from ") +
                             strlen(" to ") + 6 * strlen("\"") + strlen(" to chain ");
-
     if (required_len > outValLen) {
         return items_data_too_large;
     }
@@ -222,31 +181,22 @@ items_error_t items_gasToDisplayString(__Z_UNUSED item_t item, char *outVal, uin
     const char *gasPrice;
     uint8_t gasLimit_len;
     uint8_t gasPrice_len;
-    
-    if (parser_usingChunks()) {
-        chunk_t *chunks = parser_getChunks();
-        gasLimit = chunks[GAS_LIMIT_POS].data;
-        gasLimit_len = chunks[GAS_LIMIT_POS].len;
-        gasPrice = chunks[GAS_PRICE_POS].data;
-        gasPrice_len = chunks[GAS_PRICE_POS].len;
-    } else {
-        parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
-        uint16_t item_token_index = item.json_token_index;
-        uint16_t meta_token_index = item.json_token_index;
-        jsmntok_t *token;
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
+    uint16_t item_token_index = item.json_token_index;
+    uint16_t meta_token_index = item.json_token_index;
+    jsmntok_t *token;
 
-        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, JSON_GAS_LIMIT, &item_token_index));
-        token = &(json_all->tokens[item_token_index]);
-        gasLimit = json_all->buffer + token->start;
-        gasLimit_len = token->end - token->start;
+    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, JSON_GAS_LIMIT, &item_token_index));
+    token = &(json_all->tokens[item_token_index]);
+    gasLimit = json_all->buffer + token->start;
+    gasLimit_len = token->end - token->start;
 
-        item_token_index = meta_token_index;
+    item_token_index = meta_token_index;
 
-        PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, JSON_GAS_PRICE, &item_token_index));
-        token = &(json_all->tokens[item_token_index]);
-        gasPrice = json_all->buffer + token->start;
-        gasPrice_len = token->end - token->start;
-    }
+    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, item_token_index, JSON_GAS_PRICE, &item_token_index));
+    token = &(json_all->tokens[item_token_index]);
+    gasPrice = json_all->buffer + token->start;
+    gasPrice_len = token->end - token->start;
 
     uint16_t required_len = gasLimit_len + gasPrice_len + strlen("at most ") + strlen(" at price ");
     if (required_len > outValLen) {
@@ -360,18 +310,3 @@ items_error_t items_signForAddrToDisplayString(__Z_UNUSED item_t item, char *out
     return items_ok;
 }
 #endif
-
-static items_error_t items_findChunkIndex(const char *key, uint8_t *outPos) {
-    if (MEMCMP(key, "On Network", strlen("On Network")) == 0) {
-        *outPos = NETWORK_POS;
-        return items_ok;
-    } else if (MEMCMP(key, "Of Key", strlen("Of Key")) == 0) {
-        *outPos = PUBKEY_POS;
-        return items_ok;
-    } else if (MEMCMP(key, "On Chain", strlen("On Chain")) == 0) {
-        *outPos = CHAIN_ID_POS;
-        return items_ok;
-    } else {
-        return items_error;
-    }
-}

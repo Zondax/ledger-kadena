@@ -73,7 +73,7 @@ zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t 
     uint8_t privateKeyData[SK_LEN_25519] = {0};
 
     uint8_t hash[BLAKE2B_HASH_SIZE] = {0};
-    if (tx_type == tx_type_hash || tx_type == tx_type_transaction) {
+    if (tx_type == tx_type_hash) {
         memcpy(hash, message, BLAKE2B_HASH_SIZE);
     } else {
         if (blake2b_hash((uint8_t *)message, messageLen, hash) != zxerr_ok) {
