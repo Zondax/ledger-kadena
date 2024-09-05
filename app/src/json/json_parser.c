@@ -191,7 +191,7 @@ parser_error_t object_get_value(const parsed_json_t *json, uint16_t object_token
 
         if (((uint16_t)strlen(key_name)) == (key_token.end - key_token.start)) {
             uint16_t i = 0;
-            for (; i < strlen(key_name); i++) {
+            for (; i < (uint16_t)strlen(key_name); i++) {
                 if (json->buffer[key_token.start + i] != key_name[i]) {
                     break;
                 }

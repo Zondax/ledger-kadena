@@ -52,7 +52,7 @@ storage_t N_appdata_impl __attribute__((aligned(64)));
 
 static parser_context_t ctx_parsed_tx;
 
-void tx_json_initialize() { buffering_json_init((uint8_t *)N_appdata.templete_json, sizeof(N_appdata.templete_json)); }
+void tx_json_initialize() { buffering_json_init((uint8_t *)N_appdata.templete_json, FLASH_BUFFER_SIZE); }
 
 void tx_json_reset() { buffering_json_reset(); }
 

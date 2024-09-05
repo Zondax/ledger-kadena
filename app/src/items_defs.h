@@ -61,7 +61,7 @@ typedef enum {
     key_sign_for_address,
 } display_title_t;
 
-typedef struct __attribute__((packed)) {
+typedef struct {
     display_title_t key;
     uint16_t json_token_index;
     bool_t can_display;
@@ -75,7 +75,7 @@ typedef enum {
     items_error,
 } items_error_t;
 
-typedef struct __attribute__((packed)) {
+typedef struct {
     item_t items[MAX_NUMBER_OF_ITEMS];
     uint8_t numOfItems;
     uint8_t numOfUnknownCapabilities;
