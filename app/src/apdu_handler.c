@@ -109,13 +109,13 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
     THROW(APDU_CODE_OK);
 }
 
-__Z_INLINE void handleSignJson(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+__Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignJson\n");
     if (!process_chunk(tx, rx)) {
         THROW(APDU_CODE_OK);
     }
 
-    const char *error_msg = tx_parse(tx_type_json);
+    const char *error_msg = tx_parse(get_tx_type());
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
@@ -125,46 +125,6 @@ __Z_INLINE void handleSignJson(volatile uint32_t *flags, volatile uint32_t *tx, 
     }
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign);
-    view_review_show(REVIEW_TXN);
-    *flags |= IO_ASYNCH_REPLY;
-}
-
-__Z_INLINE void handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    zemu_log("handleSignHash\n");
-    if (!process_chunk(tx, rx)) {
-        THROW(APDU_CODE_OK);
-    }
-
-    const char *error_msg = tx_parse(tx_type_hash);
-    CHECK_APP_CANARY()
-    if (error_msg != NULL) {
-        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
-        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
-        *tx += (error_msg_length);
-        THROW(APDU_CODE_DATA_INVALID);
-    }
-
-    view_review_init(tx_getItem, tx_getNumItems, app_sign_hash);
-    view_review_show(REVIEW_TXN);
-    *flags |= IO_ASYNCH_REPLY;
-}
-
-__Z_INLINE void handleSignTransaction(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    zemu_log("handleSignTransaction\n");
-    if (!process_chunk(tx, rx)) {
-        THROW(APDU_CODE_OK);
-    }
-
-    const char *error_msg = tx_parse(tx_type_transaction);
-    CHECK_APP_CANARY()
-    if (error_msg != NULL) {
-        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
-        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
-        *tx += (error_msg_length);
-        THROW(APDU_CODE_DATA_INVALID);
-    }
-
-    view_review_init(tx_getItem, tx_getNumItems, app_sign_json_template);
     view_review_show(REVIEW_TXN);
     *flags |= IO_ASYNCH_REPLY;
 }
@@ -227,19 +187,22 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
 
                 case INS_SIGN_KDA: {
                     CHECK_PIN_VALIDATED()
-                    handleSignJson(flags, tx, rx);
+                    set_tx_type(tx_type_json);
+                    handleSign(flags, tx, rx);
                     break;
                 }
 
                 case INS_SIGN_HASH_KDA: {
                     CHECK_PIN_VALIDATED()
-                    handleSignHash(flags, tx, rx);
+                    set_tx_type(tx_type_hash);
+                    handleSign(flags, tx, rx);
                     break;
                 }
 
                 case INS_SIGN_TRANSACTION_KDA: {
                     CHECK_PIN_VALIDATED()
-                    handleSignTransaction(flags, tx, rx);
+                    set_tx_type(tx_type_transaction);
+                    handleSign(flags, tx, rx);
                     break;
                 }
 

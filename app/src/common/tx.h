@@ -21,6 +21,14 @@
 
 void tx_initialize();
 
+/// Sets the transaction type
+/// \param type The type of the transaction to set
+void set_tx_type(tx_type_t type);
+
+/// Gets the current transaction type
+/// \return The current transaction type
+tx_type_t get_tx_type();
+
 /// Clears the transaction buffer
 void tx_reset();
 

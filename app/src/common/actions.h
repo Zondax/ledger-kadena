@@ -41,40 +41,19 @@ __Z_INLINE zxerr_t app_fill_address() {
 }
 
 __Z_INLINE void app_sign() {
-    const uint8_t *message = tx_get_buffer();
-    const uint16_t messageLength = tx_get_buffer_length();
+    tx_type_t tx_type = get_tx_type();
+    const uint8_t *message = NULL;
+    uint16_t messageLength = 0;
 
-    const zxerr_t err = crypto_sign(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength, tx_type_json);
-
-    if (err != zxerr_ok) {
-        set_code(G_io_apdu_buffer, 0, APDU_CODE_SIGN_VERIFY_ERROR);
-        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    if (tx_type == tx_type_transaction) {
+        message = tx_json_get_buffer();
+        messageLength = tx_json_get_buffer_length();
     } else {
-        set_code(G_io_apdu_buffer, SK_LEN_25519, APDU_CODE_OK);
-        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SK_LEN_25519 + 2);
+        message = tx_get_buffer();
+        messageLength = tx_get_buffer_length();
     }
-}
 
-__Z_INLINE void app_sign_hash() {
-    const uint8_t *message = tx_get_buffer();
-    const uint16_t messageLength = tx_get_buffer_length();
-
-    const zxerr_t err = crypto_sign(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength, tx_type_hash);
-
-    if (err != zxerr_ok) {
-        set_code(G_io_apdu_buffer, 0, APDU_CODE_SIGN_VERIFY_ERROR);
-        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
-    } else {
-        set_code(G_io_apdu_buffer, SK_LEN_25519, APDU_CODE_OK);
-        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SK_LEN_25519 + 2);
-    }
-}
-
-__Z_INLINE void app_sign_json_template() {
-    const uint8_t *message = (uint8_t *)tx_json_get_buffer();
-    const uint16_t messageLength = tx_json_get_buffer_length();
-
-    const zxerr_t err = crypto_sign(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength, tx_type_transaction);
+    const zxerr_t err = crypto_sign(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength, tx_type);
 
     if (err != zxerr_ok) {
         set_code(G_io_apdu_buffer, 0, APDU_CODE_SIGN_VERIFY_ERROR);

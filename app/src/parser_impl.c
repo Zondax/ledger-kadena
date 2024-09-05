@@ -22,38 +22,6 @@
 #include "tx.h"
 #include "zxformat.h"
 
-#define TRANSFER_FORMAT                                                                     \
-    "{\"networkId\":\"%.*s\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"(%.*s.transfer " \
-    "\\\"k:%.*s\\\" \\\"k:%.*s\\\" %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":[" \
-    "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s],\"name\":\"%.*s.TRANSFER\"},"                   \
-    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":%.*s,"               \
-    "\"ttl\":%.*s,\"gasLimit\":%.*s,\"chainId\":\"%.*s\",\"gasPrice\":%.*s,"                \
-    "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
-
-#define TRANSFER_CREATE_FORMAT                                                                \
-    "{\"networkId\":\"%.*s\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\"," \
-    "\"keys\":[\"%.*s\"]}},\"code\":\"(%.*s.transfer-create \\\"k:%.*s\\\" \\\"k:%.*s\\\" "   \
-    "(read-keyset \\\"ks\\\") %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":["        \
-    "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s],\"name\":\"%.*s.TRANSFER\"},"                     \
-    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":%.*s,"                 \
-    "\"ttl\":%.*s,\"gasLimit\":%.*s,\"chainId\":\"%.*s\",\"gasPrice\":%.*s,"                  \
-    "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
-
-#define TRANSFER_CROSSCHAIN_FORMAT                                                                  \
-    "{\"networkId\":\"%.*s\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\","       \
-    "\"keys\":[\"%.*s\"]}},\"code\":\"(%.*s.transfer-crosschain \\\"k:%.*s\\\" \\\"k:%.*s\\\" "     \
-    "(read-keyset \\\"ks\\\") \\\"%.*s\\\" %.*s)\"}},\"signers\":[{\"pubKey\":\"%.*s\",\"clist\":[" \
-    "{\"args\":[\"k:%.*s\",\"k:%.*s\",%.*s,\"%.*s\"],\"name\":\"%.*s.TRANSFER_XCHAIN\"},"           \
-    "{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":%.*s,"                       \
-    "\"ttl\":%.*s,\"gasLimit\":%.*s,\"chainId\":\"%.*s\",\"gasPrice\":%.*s,"                        \
-    "\"sender\":\"k:%.*s\"},\"nonce\":\"%.*s\"}"
-
-#define INCREMENT_POINTER_NVM(inc)                                                            \
-    {                                                                                         \
-        if (ptr + inc > jsonTemplate + jsonTemplateSize) return parser_unexpected_buffer_end; \
-        ptr += inc;                                                                           \
-    }
-
 #define RECIPIENT_POS 0
 #define RECIPIENT_CHAIN_POS 1
 #define NETWORK_POS 2
@@ -66,6 +34,8 @@
 #define CHAIN_ID_POS 9
 #define NONCE_POS 10
 #define TTL_POS 11
+
+#define CMP_STRING_AND_BUFFER(str, buffer, len) (len == strlen(str) && MEMCMP(str, buffer, len) == 0)
 
 static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte);
 static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len);
@@ -129,7 +99,7 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
             uint8_t offset = 0;
 
             // Key could possibly be prefixed with "k:"
-            if (MEMCMP("k:", json_all->buffer + value_token->start, 2) == 0) {
+            if (CMP_STRING_AND_BUFFER("k:", json_all->buffer + value_token->start, 2)) {
                 offset = 2;
             }
 
@@ -175,27 +145,27 @@ parser_error_t parser_validateMetaField() {
 
     CHECK_ERROR(object_get_value(json_all, 0, JSON_META, &meta_token_index));
 
-    if (!items_isNullField(meta_token_index)) {
-        object_get_element_count(json_all, meta_token_index, &meta_num_elements);
-
-        for (uint16_t i = 0; i < meta_num_elements; i++) {
-            object_get_nth_key(json_all, meta_token_index, i, &key_token_idx);
-            token = &(json_all->tokens[key_token_idx]);
-
-            // Prevent buffer overflow in case of big key-value pair in meta field.
-            if (token->end - token->start >= sizeof(meta_curr_key)) return parser_invalid_meta_field;
-
-            MEMCPY(meta_curr_key, json_all->buffer + token->start, token->end - token->start);
-            meta_curr_key[token->end - token->start] = '\0';
-
-            if (strcmp(keywords[i], meta_curr_key) != 0) {
-                return parser_invalid_meta_field;
-            }
-
-            MEMZERO(meta_curr_key, sizeof(meta_curr_key));
-        }
-    } else {
+    if (items_isNullField(meta_token_index)) {
         return parser_no_data;
+    }
+
+    object_get_element_count(json_all, meta_token_index, &meta_num_elements);
+
+    for (uint16_t i = 0; i < meta_num_elements; i++) {
+        object_get_nth_key(json_all, meta_token_index, i, &key_token_idx);
+        token = &(json_all->tokens[key_token_idx]);
+
+        // Prevent buffer overflow in case of big key-value pair in meta field.
+        if (token->end - token->start >= sizeof(meta_curr_key)) return parser_invalid_meta_field;
+
+        MEMCPY(meta_curr_key, json_all->buffer + token->start, token->end - token->start);
+        meta_curr_key[token->end - token->start] = '\0';
+
+        if (strcmp(keywords[i], meta_curr_key) != 0) {
+            return parser_invalid_meta_field;
+        }
+
+        MEMZERO(meta_curr_key, sizeof(meta_curr_key));
     }
 
     return parser_ok;
@@ -214,14 +184,13 @@ parser_error_t parser_getTxName(uint16_t token_index) {
 
         if (len == 0) return parser_no_data;
 
-        if (strlen("coin.TRANSFER") == len && MEMCMP("coin.TRANSFER", json_all->buffer + token->start, len) == 0) {
+        if (CMP_STRING_AND_BUFFER("coin.TRANSFER", json_all->buffer + token->start, len)) {
             return parser_name_tx_transfer;
-        } else if (strlen("coin.TRANSFER_XCHAIN") == len &&
-                   MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len) == 0) {
+        } else if (CMP_STRING_AND_BUFFER("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len)) {
             return parser_name_tx_transfer_xchain;
-        } else if (strlen("coin.ROTATE") == len && MEMCMP("coin.ROTATE", json_all->buffer + token->start, len) == 0) {
+        } else if (CMP_STRING_AND_BUFFER("coin.ROTATE", json_all->buffer + token->start, len)) {
             return parser_name_rotate;
-        } else if (strlen("coin.GAS") == len || MEMCMP("coin.GAS", json_all->buffer + token->start, len) == 0) {
+        } else if (CMP_STRING_AND_BUFFER("coin.GAS", json_all->buffer + token->start, len)) {
             return parser_name_gas;
         }
     }
@@ -254,7 +223,7 @@ bool items_isNullField(uint16_t json_token_index) {
 
     if (token->end - token->start != sizeof("null") - 1) return false;
 
-    return (MEMCMP("null", json_all->buffer + token->start, token->end - token->start) == 0);
+    return CMP_STRING_AND_BUFFER("null", json_all->buffer + token->start, token->end - token->start);
 }
 
 parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {

@@ -36,6 +36,8 @@
 // Ram
 uint8_t ram_buffer[RAM_BUFFER_SIZE];
 
+tx_type_t tx_type;
+
 // Flash
 typedef struct {
     uint8_t buffer[FLASH_BUFFER_SIZE];
@@ -51,6 +53,10 @@ storage_t N_appdata_impl __attribute__((aligned(64)));
 #endif
 
 static parser_context_t ctx_parsed_tx;
+
+void set_tx_type(tx_type_t type) { tx_type = type; }
+
+tx_type_t get_tx_type() { return tx_type; }
 
 void tx_json_initialize() { buffering_json_init((uint8_t *)N_appdata.templete_json, FLASH_BUFFER_SIZE); }
 
