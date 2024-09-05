@@ -262,7 +262,7 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
     uint8_t tx_type = 0;
     parser_readSingleByte(ctx, &tx_type);
 
-    chunk_t chunks[12];
+    chunk_t chunks[12] = {0};
 
     for (int i = 0; i < 12; i++) {
         parser_readSingleByte(ctx, &chunks[i].len);
