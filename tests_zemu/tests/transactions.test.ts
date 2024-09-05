@@ -137,10 +137,6 @@ describe.each(TRANSACTIONS_TEST_CASES)('Tx transfer', function (data) {
 
       const decodedHash = decodeHash(signatureResponse.hash)
 
-      console.log('Pubkey: ', pubKey.toString('hex'))
-      console.log('Signature: ', signatureResponse.signature.toString('hex'))
-      console.log('Decoded Hash: ', decodedHash.toString('hex'))
-
       // Now verify the signature
       const valid = ed25519.verify(signatureResponse.signature, decodedHash, pubKey)
       expect(valid).toEqual(true)

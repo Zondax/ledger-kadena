@@ -68,7 +68,7 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
         parser_createJsonTemplate(ctx);
         ctx->json = &tx_obj_json;
         ctx->buffer = tx_json_get_buffer();
-        ctx->bufferLen = tx_json_get_buffer_length();
+        ctx->bufferLen = (uint16_t)tx_json_get_buffer_length();
 
         CHECK_ERROR(_read_json_tx(ctx));
     }

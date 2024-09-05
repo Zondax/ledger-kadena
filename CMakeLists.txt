@@ -140,8 +140,10 @@ file(GLOB_RECURSE LIB_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/hexutils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/zxmacros.c
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/zxformat.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/buffering.c
         ####
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/buffering_json.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/tx.c
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/parser.c
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/items.c
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/items_format.c
