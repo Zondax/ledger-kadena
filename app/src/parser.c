@@ -140,7 +140,7 @@ static parser_error_t parser_getItemKey(uint8_t displayIdx, char *outKey, uint16
     item_array_t *item_array = items_getItemArray();
     static uint8_t transfer_count = 0;
     static uint8_t unk_cap_count = 0;
-    static uint8_t lastdisplayIdx = 0;
+    static uint8_t last_displayIdx = 0;
     bool update_counts = false;
 
     if (displayIdx == 0) {
@@ -148,11 +148,11 @@ static parser_error_t parser_getItemKey(uint8_t displayIdx, char *outKey, uint16
         unk_cap_count = 0;
     }
 
-    if (lastdisplayIdx != displayIdx) {
+    if (last_displayIdx != displayIdx) {
         update_counts = true;
     }
 
-    lastdisplayIdx = displayIdx;
+    last_displayIdx = displayIdx;
 
     switch (item_array->items[displayIdx].key) {
         case key_signing:

@@ -36,6 +36,9 @@
 #define NONCE_POS 10
 #define TTL_POS 11
 
+#define ADDRESS_HEX_LEN 65
+#define HASH_LEN 32
+
 #define MAX_FIELDS_IN_INPUT_DATA 12
 #define RECIPIENT_LEN 64
 #define RECIPIENT_CHAIN_LEN 2
@@ -73,6 +76,11 @@ parser_error_t _read_json_tx(parser_context_t *c) {
 }
 
 parser_error_t _read_hash_tx(parser_context_t *c) {
+
+    if (c->bufferLen != HASH_LEN) {
+        return parser_unexpected_buffer_end;
+    }
+
     parser_hash_obj = c->hash;
 
     MEMZERO(parser_hash_obj, sizeof(tx_hash_t));
@@ -242,7 +250,7 @@ bool items_isNullField(uint16_t json_token_index) {
 
 parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
     uint8_t tx_type = 0;
-    char address[65] = {0};
+    char address[ADDRESS_HEX_LEN] = {0};
     uint16_t address_len = 0;
     chunk_t chunks[MAX_FIELDS_IN_INPUT_DATA] = {0};
 
@@ -255,6 +263,10 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
         } else {
             chunks[i].data = (char *)"";
         }
+    }
+
+    if (ctx->offset != ctx->bufferLen) {
+        return parser_unexpected_unparsed_bytes;
     }
 
     CHECK_ERROR(parser_validate_chunks(chunks));
@@ -300,6 +312,11 @@ static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, u
 }
 
 static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *address, chunk_t *chunks, uint8_t tx_type) {
+
+    if (address == NULL || chunks == NULL) {
+        return parser_unexpected_value;
+    }
+
     char namespace_and_module[50] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
@@ -461,6 +478,8 @@ const char *parser_getErrorDescription(parser_error_t err) {
             return "missing field";
         case parser_expert_mode_required:
             return "Expert mode required for this operation";
+        case parser_unexpected_unparsed_bytes:
+            return "Unexpected unparsed bytes";
 
         case parser_display_idx_out_of_range:
             return "display index out of range";
