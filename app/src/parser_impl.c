@@ -37,6 +37,18 @@
 #define TTL_POS 11
 
 #define MAX_FIELDS_IN_INPUT_DATA 12
+#define RECIPIENT_LEN 64
+#define RECIPIENT_CHAIN_LEN 2
+#define NETWORK_LEN 20
+#define AMOUNT_LEN 32
+#define NAMESPACE_LEN 16
+#define MODULE_LEN 32
+#define GAS_PRICE_LEN 10
+#define GAS_LIMIT_LEN 20
+#define CREATION_TIME_LEN 12
+#define CHAIN_ID_LEN 2
+#define NONCE_LEN 32
+#define TTL_LEN 20
 
 #define CMP_STRING_AND_BUFFER(str, buffer, len) (len == strlen(str) && MEMCMP(str, buffer, len) == 0)
 
@@ -384,40 +396,40 @@ static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *addres
 }
 
 static parser_error_t parser_validate_chunks(chunk_t *chunks) {
-    if (chunks[RECIPIENT_POS].len != 64) {
+    if (chunks[RECIPIENT_POS].len != RECIPIENT_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[RECIPIENT_CHAIN_POS].len > 2) {
+    if (chunks[RECIPIENT_CHAIN_POS].len > RECIPIENT_CHAIN_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[NETWORK_POS].len > 20) {
+    if (chunks[NETWORK_POS].len > NETWORK_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[AMOUNT_POS].len > 32) {
+    if (chunks[AMOUNT_POS].len > AMOUNT_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[NAMESPACE_POS].len > 16) {
+    if (chunks[NAMESPACE_POS].len > NAMESPACE_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[MODULE_POS].len > 32) {
+    if (chunks[MODULE_POS].len > MODULE_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[GAS_PRICE_POS].len > 10) {
+    if (chunks[GAS_PRICE_POS].len > GAS_PRICE_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[GAS_LIMIT_POS].len > 20) {
+    if (chunks[GAS_LIMIT_POS].len > GAS_LIMIT_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[CREATION_TIME_POS].len > 12) {
+    if (chunks[CREATION_TIME_POS].len > CREATION_TIME_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[CHAIN_ID_POS].len > 2) {
+    if (chunks[CHAIN_ID_POS].len > CHAIN_ID_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[NONCE_POS].len > 32) {
+    if (chunks[NONCE_POS].len > NONCE_LEN) {
         return parser_value_out_of_range;
     }
-    if (chunks[TTL_POS].len > 20) {
+    if (chunks[TTL_POS].len > TTL_LEN) {
         return parser_value_out_of_range;
     }
     return parser_ok;
