@@ -33,6 +33,10 @@ void buffering_json_init(uint8_t *flash_buffer, uint16_t flash_buffer_size) {
 void buffering_json_reset() { flash_json.pos = 0; }
 
 int buffering_json_append(uint8_t *data, int length) {
+    if (data == NULL || flash_json.data == NULL) {
+        return 0;
+    }
+
     // Flash in use, append to flash
     if (flash_json.size - flash_json.pos >= length) {
         MEMCPY_NV(flash_json.data + flash_json.pos, data, (size_t)length);

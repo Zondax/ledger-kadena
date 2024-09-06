@@ -234,12 +234,12 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
     uint16_t address_len = 0;
     chunk_t chunks[MAX_FIELDS_IN_INPUT_DATA] = {0};
 
-    parser_readSingleByte(ctx, &tx_type);
+    CHECK_ERROR(parser_readSingleByte(ctx, &tx_type));
 
     for (int i = 0; i < MAX_FIELDS_IN_INPUT_DATA; i++) {
-        parser_readSingleByte(ctx, &chunks[i].len);
+        CHECK_ERROR(parser_readSingleByte(ctx, &chunks[i].len));
         if (chunks[i].len > 0) {
-            parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len);
+            CHECK_ERROR(parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len));
         } else {
             chunks[i].data = (char *)"";
         }
