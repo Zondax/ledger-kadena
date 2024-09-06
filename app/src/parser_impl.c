@@ -16,6 +16,7 @@
 
 #include "parser_impl.h"
 
+#include "buffering_json.h"
 #include "crypto.h"
 #include "crypto_helper.h"
 #include "items.h"
@@ -35,13 +36,14 @@
 #define NONCE_POS 10
 #define TTL_POS 11
 
+#define MAX_FIELDS_IN_INPUT_DATA 12
+
 #define CMP_STRING_AND_BUFFER(str, buffer, len) (len == strlen(str) && MEMCMP(str, buffer, len) == 0)
 
 static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte);
 static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len);
-static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *address, chunk_t *chunks);
-static parser_error_t parser_formatTxTransferCreate(uint16_t address_len, char *address, chunk_t *chunks);
-static parser_error_t parser_formatTxTransferCrosschain(uint16_t address_len, char *address, chunk_t *chunks);
+static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *address, chunk_t *chunks, uint8_t tx_type);
+static parser_error_t parser_validate_chunks(chunk_t *chunks);
 
 tx_json_t *parser_json_obj;
 tx_hash_t *parser_hash_obj;
@@ -227,13 +229,14 @@ bool items_isNullField(uint16_t json_token_index) {
 }
 
 parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
-    // read tx_type
     uint8_t tx_type = 0;
+    char address[65] = {0};
+    uint16_t address_len = 0;
+    chunk_t chunks[MAX_FIELDS_IN_INPUT_DATA] = {0};
+
     parser_readSingleByte(ctx, &tx_type);
 
-    chunk_t chunks[12] = {0};
-
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < MAX_FIELDS_IN_INPUT_DATA; i++) {
         parser_readSingleByte(ctx, &chunks[i].len);
         if (chunks[i].len > 0) {
             parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len);
@@ -242,7 +245,8 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
         }
     }
 
-    char address[65] = {0};
+    CHECK_ERROR(parser_validate_chunks(chunks));
+
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
     uint8_t pubkey[PUB_KEY_LENGTH] = {0};
     uint16_t pubkey_len = 0;
@@ -251,29 +255,14 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
         return parser_unexpected_error;
     }
 
-    uint32_t address_len = array_to_hexstr(address, sizeof(address), pubkey, PUB_KEY_LENGTH);
+    address_len = array_to_hexstr(address, sizeof(address), pubkey, PUB_KEY_LENGTH);
 #else
     // Dummy address for cpp_test
-    uint32_t address_len =
+    address_len =
         snprintf(address, sizeof(address), "%s", "1234567890123456789012345678901234567890123456789012345678901234");
 #endif
 
-    switch (tx_type) {
-        case TX_TYPE_TRANSFER: {
-            parser_formatTxTransfer(address_len, address, chunks);
-            break;
-        }
-        case TX_TYPE_TRANSFER_CREATE: {
-            parser_formatTxTransferCreate(address_len, address, chunks);
-            break;
-        }
-        case TX_TYPE_TRANSFER_CROSSCHAIN: {
-            parser_formatTxTransferCrosschain(address_len, address, chunks);
-            break;
-        }
-        default:
-            return parser_no_data;
-    }
+    CHECK_ERROR(parser_formatTxTransfer(address_len, address, chunks, tx_type));
 
     return parser_ok;
 }
@@ -298,8 +287,8 @@ static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, u
     return parser_ok;
 }
 
-static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *address, chunk_t *chunks) {
-    char namespace_and_module[30] = {0};
+static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *address, chunk_t *chunks, uint8_t tx_type) {
+    char namespace_and_module[50] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
                  chunks[NAMESPACE_POS].data, chunks[MODULE_POS].len, chunks[MODULE_POS].data);
@@ -309,14 +298,48 @@ static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *addres
 
     tx_json_append((uint8_t *)"{\"networkId\":\"", 14);
     tx_json_append((uint8_t *)chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    tx_json_append((uint8_t *)"\",\"payload\":{\"exec\":{\"data\":{},\"code\":\"", 39);
-    tx_json_append((uint8_t *)"(", 1);
+    tx_json_append((uint8_t *)"\",\"payload\":{\"exec\":{\"data\":", 28);
+
+    if (tx_type == TX_TYPE_TRANSFER) {
+        tx_json_append((uint8_t *)"{}", 2);
+    } else {
+        tx_json_append((uint8_t *)"{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 34);
+        tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+        tx_json_append((uint8_t *)"\"]}}", 4);
+    }
+
+    tx_json_append((uint8_t *)",\"code\":\"(", 10);
     tx_json_append((uint8_t *)namespace_and_module, strlen(namespace_and_module));
-    tx_json_append((uint8_t *)".transfer \\\"k:", 14);
+
+    switch (tx_type) {
+        case TX_TYPE_TRANSFER:
+            tx_json_append((uint8_t *)".transfer", 9);
+            break;
+        case TX_TYPE_TRANSFER_CREATE:
+            tx_json_append((uint8_t *)".transfer-create", 16);
+            break;
+        case TX_TYPE_TRANSFER_CROSSCHAIN:
+            tx_json_append((uint8_t *)".transfer-crosschain", 20);
+            break;
+    }
+
+    tx_json_append((uint8_t *)" \\\"k:", 5);
     tx_json_append((uint8_t *)address, address_len);
     tx_json_append((uint8_t *)"\\\" \\\"k:", 7);
     tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    tx_json_append((uint8_t *)"\\\" ", 3);
+    tx_json_append((uint8_t *)"\\\"", 2);
+
+    if (tx_type != TX_TYPE_TRANSFER) {
+        tx_json_append((uint8_t *)" (read-keyset \\\"ks\\\")", 21);
+    }
+
+    if (tx_type == TX_TYPE_TRANSFER_CROSSCHAIN) {
+        tx_json_append((uint8_t *)" \\\"", 3);
+        tx_json_append((uint8_t *)chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
+        tx_json_append((uint8_t *)"\\\"", 2);
+    }
+
+    tx_json_append((uint8_t *)" ", 1);
     tx_json_append((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
     tx_json_append((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
     tx_json_append((uint8_t *)address, address_len);
@@ -326,9 +349,22 @@ static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *addres
     tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
     tx_json_append((uint8_t *)"\",", 2);
     tx_json_append((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+
+    if (tx_type == TX_TYPE_TRANSFER_CROSSCHAIN) {
+        tx_json_append((uint8_t *)",\"", 2);
+        tx_json_append((uint8_t *)chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
+        tx_json_append((uint8_t *)"\"", 1);
+    }
+
     tx_json_append((uint8_t *)"],\"name\":\"", 10);
     tx_json_append((uint8_t *)namespace_and_module, strlen(namespace_and_module));
-    tx_json_append((uint8_t *)".TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 68);
+    tx_json_append((uint8_t *)".TRANSFER", 9);
+
+    if (tx_type == TX_TYPE_TRANSFER_CROSSCHAIN) {
+        tx_json_append((uint8_t *)"_XCHAIN", 7);
+    }
+
+    tx_json_append((uint8_t *)"\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 59);
     tx_json_append((uint8_t *)chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
     tx_json_append((uint8_t *)",\"ttl\":", 7);
     tx_json_append((uint8_t *)chunks[TTL_POS].data, chunks[TTL_POS].len);
@@ -347,107 +383,43 @@ static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *addres
     return parser_ok;
 }
 
-static parser_error_t parser_formatTxTransferCreate(uint16_t address_len, char *address, chunk_t *chunks) {
-    char namespace_and_module[30] = {0};
-    if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
-        snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
-                 chunks[NAMESPACE_POS].data, chunks[MODULE_POS].len, chunks[MODULE_POS].data);
-    } else {
-        snprintf(namespace_and_module, sizeof(namespace_and_module), "%s", "coin");
+static parser_error_t parser_validate_chunks(chunk_t *chunks) {
+    if (chunks[RECIPIENT_POS].len != 64) {
+        return parser_value_out_of_range;
     }
-
-    tx_json_append((uint8_t *)"{\"networkId\":\"", 14);
-    tx_json_append((uint8_t *)chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    tx_json_append((uint8_t *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 62);
-    tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    tx_json_append((uint8_t *)"\"]}},\"code\":\"(", 14);
-    tx_json_append((uint8_t *)namespace_and_module, strlen(namespace_and_module));
-    tx_json_append((uint8_t *)".transfer-create \\\"k:", 21);
-    tx_json_append((uint8_t *)address, address_len);
-    tx_json_append((uint8_t *)"\\\" \\\"k:", 7);
-    tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    tx_json_append((uint8_t *)"\\\" (read-keyset \\\"ks\\\") ", 24);
-    tx_json_append((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    tx_json_append((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
-    tx_json_append((uint8_t *)address, address_len);
-    tx_json_append((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23);
-    tx_json_append((uint8_t *)address, address_len);
-    tx_json_append((uint8_t *)"\",\"k:", 5);
-    tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    tx_json_append((uint8_t *)"\",", 2);
-    tx_json_append((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    tx_json_append((uint8_t *)"],\"name\":\"", 10);
-    tx_json_append((uint8_t *)namespace_and_module, strlen(namespace_and_module));
-    tx_json_append((uint8_t *)".TRANSFER\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 68);
-    tx_json_append((uint8_t *)chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
-    tx_json_append((uint8_t *)",\"ttl\":", 7);
-    tx_json_append((uint8_t *)chunks[TTL_POS].data, chunks[TTL_POS].len);
-    tx_json_append((uint8_t *)",\"gasLimit\":", 12);
-    tx_json_append((uint8_t *)chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
-    tx_json_append((uint8_t *)",\"chainId\":\"", 12);
-    tx_json_append((uint8_t *)chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    tx_json_append((uint8_t *)"\",\"gasPrice\":", 13);
-    tx_json_append((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
-    tx_json_append((uint8_t *)",\"sender\":\"k:", 13);
-    tx_json_append((uint8_t *)address, address_len);
-    tx_json_append((uint8_t *)"\"},\"nonce\":\"", 12);
-    tx_json_append((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len);
-    tx_json_append((uint8_t *)"\"}", 2);
-
-    return parser_ok;
-}
-
-static parser_error_t parser_formatTxTransferCrosschain(uint16_t address_len, char *address, chunk_t *chunks) {
-    char namespace_and_module[30] = {0};
-    if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
-        snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
-                 chunks[NAMESPACE_POS].data, chunks[MODULE_POS].len, chunks[MODULE_POS].data);
-    } else {
-        snprintf(namespace_and_module, sizeof(namespace_and_module), "%s", "coin");
+    if (chunks[RECIPIENT_CHAIN_POS].len > 2) {
+        return parser_value_out_of_range;
     }
-
-    tx_json_append((uint8_t *)"{\"networkId\":\"", 14);
-    tx_json_append((uint8_t *)chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
-    tx_json_append((uint8_t *)"\",\"payload\":{\"exec\":{\"data\":{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 62);
-    tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    tx_json_append((uint8_t *)"\"]}},\"code\":\"(", 14);
-    tx_json_append((uint8_t *)namespace_and_module, strlen(namespace_and_module));
-    tx_json_append((uint8_t *)".transfer-crosschain \\\"k:", 25);
-    tx_json_append((uint8_t *)address, address_len);
-    tx_json_append((uint8_t *)"\\\" \\\"k:", 7);
-    tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    tx_json_append((uint8_t *)"\\\" (read-keyset \\\"ks\\\") \\\"", 26);
-    tx_json_append((uint8_t *)chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
-    tx_json_append((uint8_t *)"\\\" ", 3);
-    tx_json_append((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    tx_json_append((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
-    tx_json_append((uint8_t *)address, address_len);
-    tx_json_append((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23);
-    tx_json_append((uint8_t *)address, address_len);
-    tx_json_append((uint8_t *)"\",\"k:", 5);
-    tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
-    tx_json_append((uint8_t *)"\",", 2);
-    tx_json_append((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
-    tx_json_append((uint8_t *)",\"", 2);
-    tx_json_append((uint8_t *)chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
-    tx_json_append((uint8_t *)"\"],\"name\":\"", 11);
-    tx_json_append((uint8_t *)namespace_and_module, strlen(namespace_and_module));
-    tx_json_append((uint8_t *)".TRANSFER_XCHAIN\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 75);
-    tx_json_append((uint8_t *)chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
-    tx_json_append((uint8_t *)",\"ttl\":", 7);
-    tx_json_append((uint8_t *)chunks[TTL_POS].data, chunks[TTL_POS].len);
-    tx_json_append((uint8_t *)",\"gasLimit\":", 12);
-    tx_json_append((uint8_t *)chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
-    tx_json_append((uint8_t *)",\"chainId\":\"", 12);
-    tx_json_append((uint8_t *)chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
-    tx_json_append((uint8_t *)"\",\"gasPrice\":", 13);
-    tx_json_append((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
-    tx_json_append((uint8_t *)",\"sender\":\"k:", 13);
-    tx_json_append((uint8_t *)address, address_len);
-    tx_json_append((uint8_t *)"\"},\"nonce\":\"", 12);
-    tx_json_append((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len);
-    tx_json_append((uint8_t *)"\"}", 2);
-
+    if (chunks[NETWORK_POS].len > 20) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[AMOUNT_POS].len > 32) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[NAMESPACE_POS].len > 16) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[MODULE_POS].len > 32) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[GAS_PRICE_POS].len > 10) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[GAS_LIMIT_POS].len > 20) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[CREATION_TIME_POS].len > 12) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[CHAIN_ID_POS].len > 2) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[NONCE_POS].len > 32) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[TTL_POS].len > 20) {
+        return parser_value_out_of_range;
+    }
     return parser_ok;
 }
 

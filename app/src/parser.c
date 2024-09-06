@@ -65,7 +65,7 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
         ctx->hash = &tx_obj_hash;
         CHECK_ERROR(_read_hash_tx(ctx));
     } else if (tx_type == tx_type_transaction) {
-        parser_createJsonTemplate(ctx);
+        CHECK_ERROR(parser_createJsonTemplate(ctx));
         ctx->json = &tx_obj_json;
         ctx->buffer = tx_json_get_buffer();
         ctx->bufferLen = (uint16_t)tx_json_get_buffer_length();
