@@ -45,7 +45,7 @@ __Z_INLINE void app_sign() {
     const uint8_t *message = NULL;
     uint16_t messageLength = 0;
 
-    if (tx_type == tx_type_transaction) {
+    if (tx_type == tx_type_transfer) {
         message = tx_json_get_buffer();
         messageLength = tx_json_get_buffer_length();
     } else {

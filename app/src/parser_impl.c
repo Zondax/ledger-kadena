@@ -76,7 +76,6 @@ parser_error_t _read_json_tx(parser_context_t *c) {
 }
 
 parser_error_t _read_hash_tx(parser_context_t *c) {
-
     if (c->bufferLen != HASH_LEN) {
         return parser_unexpected_buffer_end;
     }
@@ -312,7 +311,6 @@ static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, u
 }
 
 static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *address, chunk_t *chunks, uint8_t tx_type) {
-
     if (address == NULL || chunks == NULL) {
         return parser_unexpected_value;
     }

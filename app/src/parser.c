@@ -57,20 +57,24 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
     }
 
     CHECK_ERROR(parser_init_context(ctx, data, dataLen))
-
-    if (tx_type == tx_type_json) {
-        ctx->json = &tx_obj_json;
-        CHECK_ERROR(_read_json_tx(ctx));
-    } else if (tx_type == tx_type_hash) {
-        ctx->hash = &tx_obj_hash;
-        CHECK_ERROR(_read_hash_tx(ctx));
-    } else if (tx_type == tx_type_transaction) {
-        CHECK_ERROR(parser_createJsonTemplate(ctx));
-        ctx->json = &tx_obj_json;
-        ctx->buffer = tx_json_get_buffer();
-        ctx->bufferLen = (uint16_t)tx_json_get_buffer_length();
-
-        CHECK_ERROR(_read_json_tx(ctx));
+    switch (tx_type) {
+        case tx_type_json:
+            ctx->json = &tx_obj_json;
+            CHECK_ERROR(_read_json_tx(ctx));
+            break;
+        case tx_type_hash:
+            ctx->hash = &tx_obj_hash;
+            CHECK_ERROR(_read_hash_tx(ctx));
+            break;
+        case tx_type_transfer:
+            CHECK_ERROR(parser_createJsonTemplate(ctx));
+            ctx->json = &tx_obj_json;
+            ctx->buffer = tx_json_get_buffer();
+            ctx->bufferLen = (uint16_t)tx_json_get_buffer_length();
+            CHECK_ERROR(_read_json_tx(ctx));
+            break;
+        default:
+            return parser_unexpected_type;
     }
 
     ITEMS_TO_PARSER_ERROR(items_initItems())

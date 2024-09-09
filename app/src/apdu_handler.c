@@ -201,7 +201,7 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
 
                 case INS_SIGN_TRANSACTION_KDA: {
                     CHECK_PIN_VALIDATED()
-                    set_tx_type(tx_type_transaction);
+                    set_tx_type(tx_type_transfer);
                     handleSign(flags, tx, rx);
                     break;
                 }

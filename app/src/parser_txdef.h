@@ -25,7 +25,7 @@ extern "C" {
 
 #include "coin.h"
 
-typedef enum tx_type_t { tx_type_json, tx_type_hash, tx_type_transaction } tx_type_t;
+typedef enum tx_type_t { tx_type_json, tx_type_hash, tx_type_transfer } tx_type_t;
 
 typedef struct {
     // Buffer to the original tx blob

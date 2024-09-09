@@ -175,7 +175,9 @@ target_link_libraries(app_lib PUBLIC)
 #  Fuzz Targets
 if(ENABLE_FUZZING)
     set(FUZZ_TARGETS
-        parser_parse
+        parser_parse_json
+        parser_parse_hash
+        parser_parse_transfer
         )
 
     foreach(target ${FUZZ_TARGETS})
