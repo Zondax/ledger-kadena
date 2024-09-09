@@ -46,8 +46,8 @@
 #define AMOUNT_LEN 32
 #define NAMESPACE_LEN 16
 #define MODULE_LEN 32
-#define GAS_PRICE_LEN 10
-#define GAS_LIMIT_LEN 20
+#define GAS_PRICE_LEN 20
+#define GAS_LIMIT_LEN 10
 #define CREATION_TIME_LEN 12
 #define CHAIN_ID_LEN 2
 #define NONCE_LEN 32
