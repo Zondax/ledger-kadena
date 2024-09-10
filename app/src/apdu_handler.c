@@ -31,6 +31,15 @@
 #include "view_internal.h"
 #include "zxmacros.h"
 
+#undef INS_GET_VERSION
+#define INS_GET_VERSION 0x20
+#undef INS_GET_ADDR
+#define INS_GET_ADDR 0x21
+#undef INS_SIGN
+#define INS_SIGN 0x22
+#define INS_SIGN_HASH 0x23
+#define INS_SIGN_TRANSACTION 0x24
+
 static bool tx_initialized = false;
 
 void extractHDPath(uint32_t rx, uint32_t offset) {
@@ -174,32 +183,32 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             }
 
             switch (G_io_apdu_buffer[OFFSET_INS]) {
-                case INS_GET_VERSION_KDA: {
+                case INS_GET_VERSION: {
                     handle_getversion(flags, tx);
                     break;
                 }
 
-                case INS_GET_ADDR_KDA: {
+                case INS_GET_ADDR: {
                     CHECK_PIN_VALIDATED()
                     handleGetAddr(flags, tx, rx);
                     break;
                 }
 
-                case INS_SIGN_KDA: {
+                case INS_SIGN: {
                     CHECK_PIN_VALIDATED()
                     set_tx_type(tx_type_json);
                     handleSign(flags, tx, rx);
                     break;
                 }
 
-                case INS_SIGN_HASH_KDA: {
+                case INS_SIGN_HASH: {
                     CHECK_PIN_VALIDATED()
                     set_tx_type(tx_type_hash);
                     handleSign(flags, tx, rx);
                     break;
                 }
 
-                case INS_SIGN_TRANSACTION_KDA: {
+                case INS_SIGN_TRANSACTION: {
                     CHECK_PIN_VALIDATED()
                     set_tx_type(tx_type_transfer);
                     handleSign(flags, tx, rx);
