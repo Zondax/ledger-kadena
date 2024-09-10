@@ -17,12 +17,10 @@ char PARSER_VALUE[16384];
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    tx_json_t txObj;
-    MEMZERO(&txObj, sizeof(txObj));
     parser_context_t ctx;
     parser_error_t rc;
 
-    rc = parser_parse(&ctx, data, size, &txObj);
+    rc = parser_parse(&ctx, data, size, tx_type_json);
     if (rc != parser_ok) {
         return 0;
     }
@@ -44,8 +42,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         while (page_idx < page_count) {
             rc = parser_getItem(&ctx, i, PARSER_KEY, sizeof(PARSER_KEY), PARSER_VALUE, sizeof(PARSER_VALUE), page_idx,
                                 &page_count);
-
-            //            (void)fprintf(stderr, "%s = %s\n", PARSER_KEY, PARSER_VALUE);
 
             if (rc != parser_ok) {
                 (void)fprintf(stderr, "error getting item %u at page index %u: %s\n", (unsigned)i, (unsigned)page_idx,

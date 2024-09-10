@@ -16,28 +16,86 @@
 
 #include "parser_impl.h"
 
+#include "buffering_json.h"
+#include "crypto.h"
 #include "crypto_helper.h"
 #include "items.h"
+#include "tx.h"
+#include "zxformat.h"
 
-tx_json_t *parser_tx_obj;
+#define RECIPIENT_POS 0
+#define RECIPIENT_CHAIN_POS 1
+#define NETWORK_POS 2
+#define AMOUNT_POS 3
+#define NAMESPACE_POS 4
+#define MODULE_POS 5
+#define GAS_PRICE_POS 6
+#define GAS_LIMIT_POS 7
+#define CREATION_TIME_POS 8
+#define CHAIN_ID_POS 9
+#define NONCE_POS 10
+#define TTL_POS 11
+
+#define ADDRESS_HEX_LEN 65
+#define HASH_LEN 32
+
+#define MAX_FIELDS_IN_INPUT_DATA 12
+#define RECIPIENT_LEN 64
+#define RECIPIENT_CHAIN_LEN 2
+#define NETWORK_LEN 20
+#define AMOUNT_LEN 32
+#define NAMESPACE_LEN 16
+#define MODULE_LEN 32
+#define GAS_PRICE_LEN 20
+#define GAS_LIMIT_LEN 10
+#define CREATION_TIME_LEN 12
+#define CHAIN_ID_LEN 2
+#define NONCE_LEN 32
+#define TTL_LEN 20
+
+#define CMP_STRING_AND_BUFFER(str, buffer, len) (len == strlen(str) && MEMCMP(str, buffer, len) == 0)
+
+static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte);
+static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len);
+static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *address, chunk_t *chunks, uint8_t tx_type);
+static parser_error_t parser_validate_chunks(chunk_t *chunks);
+
+tx_json_t *parser_json_obj;
+tx_hash_t *parser_hash_obj;
 
 parser_error_t _read_json_tx(parser_context_t *c) {
-    parser_tx_obj = c->tx_obj;
+    parser_json_obj = c->json;
 
-    CHECK_ERROR(json_parse(&(parser_tx_obj->json), (const char *)c->buffer, c->bufferLen));
+    CHECK_ERROR(json_parse(&(parser_json_obj->json), (const char *)c->buffer, c->bufferLen));
 
-    parser_tx_obj->tx = (const char *)c->buffer;
-    parser_tx_obj->flags.cache_valid = 0;
-    parser_tx_obj->filter_msg_type_count = 0;
-    parser_tx_obj->filter_msg_from_count = 0;
+    parser_json_obj->tx = (const char *)c->buffer;
+    parser_json_obj->flags.cache_valid = 0;
+    parser_json_obj->filter_msg_type_count = 0;
+    parser_json_obj->filter_msg_from_count = 0;
+    return parser_ok;
+}
+
+parser_error_t _read_hash_tx(parser_context_t *c) {
+    if (c->bufferLen != HASH_LEN) {
+        return parser_unexpected_buffer_end;
+    }
+
+    parser_hash_obj = c->hash;
+
+    MEMZERO(parser_hash_obj, sizeof(tx_hash_t));
+
+    parser_hash_obj->tx = (const char *)c->buffer;
+    parser_hash_obj->hash_len = c->bufferLen;
 
     return parser_ok;
 }
 
-tx_json_t *parser_getParserTxObj() { return parser_tx_obj; }
+tx_json_t *parser_getParserJsonObj() { return parser_json_obj; }
+
+tx_hash_t *parser_getParserHashObj() { return parser_hash_obj; }
 
 parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
-    parsed_json_t *json_all = &parser_tx_obj->json;
+    parsed_json_t *json_all = &parser_json_obj->json;
     uint16_t token_index = 0;
     uint16_t clist_token_index = 0;
     uint16_t args_token_index = 0;
@@ -62,7 +120,7 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
             uint8_t offset = 0;
 
             // Key could possibly be prefixed with "k:"
-            if (MEMCMP("k:", json_all->buffer + value_token->start, 2) == 0) {
+            if (CMP_STRING_AND_BUFFER("k:", json_all->buffer + value_token->start, 2)) {
                 offset = 2;
             }
 
@@ -79,7 +137,7 @@ parser_error_t parser_findPubKeyInClist(uint16_t key_token_index) {
 parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, const char **outVal,
                                            uint8_t *outValLen) {
     uint16_t token_index = 0;
-    parsed_json_t *json_all = &(parser_tx_obj->json);
+    parsed_json_t *json_all = &(parser_json_obj->json);
     jsmntok_t *token;
     uint16_t element_count = 0;
 
@@ -103,37 +161,39 @@ parser_error_t parser_validateMetaField() {
     uint16_t meta_token_index = 0;
     uint16_t meta_num_elements = 0;
     uint16_t key_token_idx = 0;
-    parsed_json_t *json_all = &(parser_tx_obj->json);
+    parsed_json_t *json_all = &(parser_json_obj->json);
     jsmntok_t *token;
 
     CHECK_ERROR(object_get_value(json_all, 0, JSON_META, &meta_token_index));
 
-    if (!items_isNullField(meta_token_index)) {
-        object_get_element_count(json_all, meta_token_index, &meta_num_elements);
+    if (items_isNullField(meta_token_index)) {
+        return parser_no_data;
+    }
 
-        for (uint16_t i = 0; i < meta_num_elements; i++) {
-            object_get_nth_key(json_all, meta_token_index, i, &key_token_idx);
-            token = &(json_all->tokens[key_token_idx]);
+    object_get_element_count(json_all, meta_token_index, &meta_num_elements);
 
-            // Prevent buffer overflow in case of big key-value pair in meta field.
-            if (token->end - token->start >= sizeof(meta_curr_key)) return parser_invalid_meta_field;
+    for (uint16_t i = 0; i < meta_num_elements; i++) {
+        object_get_nth_key(json_all, meta_token_index, i, &key_token_idx);
+        token = &(json_all->tokens[key_token_idx]);
 
-            MEMCPY(meta_curr_key, json_all->buffer + token->start, token->end - token->start);
-            meta_curr_key[token->end - token->start] = '\0';
+        // Prevent buffer overflow in case of big key-value pair in meta field.
+        if (token->end - token->start >= sizeof(meta_curr_key)) return parser_invalid_meta_field;
 
-            if (strcmp(keywords[i], meta_curr_key) != 0) {
-                return parser_invalid_meta_field;
-            }
+        MEMCPY(meta_curr_key, json_all->buffer + token->start, token->end - token->start);
+        meta_curr_key[token->end - token->start] = '\0';
 
-            MEMZERO(meta_curr_key, sizeof(meta_curr_key));
+        if (strcmp(keywords[i], meta_curr_key) != 0) {
+            return parser_invalid_meta_field;
         }
+
+        MEMZERO(meta_curr_key, sizeof(meta_curr_key));
     }
 
     return parser_ok;
 }
 
 parser_error_t parser_getTxName(uint16_t token_index) {
-    parsed_json_t *json_all = &(parser_tx_obj->json);
+    parsed_json_t *json_all = &(parser_json_obj->json);
 
     if (object_get_value(json_all, token_index, JSON_NAME, &token_index) == parser_ok) {
         uint16_t len = 0;
@@ -145,14 +205,13 @@ parser_error_t parser_getTxName(uint16_t token_index) {
 
         if (len == 0) return parser_no_data;
 
-        if (strlen("coin.TRANSFER") == len && MEMCMP("coin.TRANSFER", json_all->buffer + token->start, len) == 0) {
+        if (CMP_STRING_AND_BUFFER("coin.TRANSFER", json_all->buffer + token->start, len)) {
             return parser_name_tx_transfer;
-        } else if (strlen("coin.TRANSFER_XCHAIN") == len &&
-                   MEMCMP("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len) == 0) {
+        } else if (CMP_STRING_AND_BUFFER("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len)) {
             return parser_name_tx_transfer_xchain;
-        } else if (strlen("coin.ROTATE") == len && MEMCMP("coin.ROTATE", json_all->buffer + token->start, len) == 0) {
+        } else if (CMP_STRING_AND_BUFFER("coin.ROTATE", json_all->buffer + token->start, len)) {
             return parser_name_rotate;
-        } else if (strlen("coin.GAS") == len || MEMCMP("coin.GAS", json_all->buffer + token->start, len) == 0) {
+        } else if (CMP_STRING_AND_BUFFER("coin.GAS", json_all->buffer + token->start, len)) {
             return parser_name_gas;
         }
     }
@@ -161,7 +220,7 @@ parser_error_t parser_getTxName(uint16_t token_index) {
 }
 
 parser_error_t parser_getValidClist(uint16_t *clist_token_index, uint16_t *num_args) {
-    parsed_json_t *json_all = &(parser_tx_obj->json);
+    parsed_json_t *json_all = &(parser_json_obj->json);
 
     CHECK_ERROR(object_get_value(json_all, 0, JSON_SIGNERS, clist_token_index));
 
@@ -180,12 +239,215 @@ parser_error_t parser_getValidClist(uint16_t *clist_token_index, uint16_t *num_a
 }
 
 bool items_isNullField(uint16_t json_token_index) {
-    parsed_json_t *json_all = &(parser_getParserTxObj()->json);
+    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
     jsmntok_t *token = &(json_all->tokens[json_token_index]);
 
     if (token->end - token->start != sizeof("null") - 1) return false;
 
-    return (MEMCMP("null", json_all->buffer + token->start, token->end - token->start) == 0);
+    return CMP_STRING_AND_BUFFER("null", json_all->buffer + token->start, token->end - token->start);
+}
+
+parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
+    uint8_t tx_type = 0;
+    char address[ADDRESS_HEX_LEN] = {0};
+    uint16_t address_len = 0;
+    chunk_t chunks[MAX_FIELDS_IN_INPUT_DATA] = {0};
+
+    CHECK_ERROR(parser_readSingleByte(ctx, &tx_type));
+
+    for (int i = 0; i < MAX_FIELDS_IN_INPUT_DATA; i++) {
+        CHECK_ERROR(parser_readSingleByte(ctx, &chunks[i].len));
+        if (chunks[i].len > 0) {
+            CHECK_ERROR(parser_readBytes(ctx, (uint8_t **)&chunks[i].data, chunks[i].len));
+        } else {
+            chunks[i].data = (char *)"";
+        }
+    }
+
+    if (ctx->offset != ctx->bufferLen) {
+        return parser_unexpected_unparsed_bytes;
+    }
+
+    CHECK_ERROR(parser_validate_chunks(chunks));
+
+#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
+    uint8_t pubkey[PUB_KEY_LENGTH] = {0};
+    uint16_t pubkey_len = 0;
+
+    if (crypto_fillAddress(pubkey, sizeof(pubkey), &pubkey_len) != zxerr_ok) {
+        return parser_unexpected_error;
+    }
+
+    address_len = array_to_hexstr(address, sizeof(address), pubkey, PUB_KEY_LENGTH);
+#else
+    // Dummy address for cpp_test
+    address_len =
+        snprintf(address, sizeof(address), "%s", "1234567890123456789012345678901234567890123456789012345678901234");
+#endif
+
+    CHECK_ERROR(parser_formatTxTransfer(address_len, address, chunks, tx_type));
+
+    return parser_ok;
+}
+
+static parser_error_t parser_readSingleByte(parser_context_t *ctx, uint8_t *byte) {
+    if (ctx->offset >= ctx->bufferLen) {
+        return parser_unexpected_buffer_end;
+    }
+
+    *byte = ctx->buffer[ctx->offset];
+    ctx->offset++;
+    return parser_ok;
+}
+
+static parser_error_t parser_readBytes(parser_context_t *ctx, uint8_t **bytes, uint16_t len) {
+    if (ctx->offset + len > ctx->bufferLen) {
+        return parser_unexpected_buffer_end;
+    }
+
+    *bytes = (uint8_t *)(ctx->buffer + ctx->offset);
+    ctx->offset += len;
+    return parser_ok;
+}
+
+static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *address, chunk_t *chunks, uint8_t tx_type) {
+    if (address == NULL || chunks == NULL) {
+        return parser_unexpected_value;
+    }
+
+    char namespace_and_module[50] = {0};
+    if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
+        snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
+                 chunks[NAMESPACE_POS].data, chunks[MODULE_POS].len, chunks[MODULE_POS].data);
+    } else {
+        snprintf(namespace_and_module, sizeof(namespace_and_module), "%s", "coin");
+    }
+
+    tx_json_append((uint8_t *)"{\"networkId\":\"", 14);
+    tx_json_append((uint8_t *)chunks[NETWORK_POS].data, chunks[NETWORK_POS].len);
+    tx_json_append((uint8_t *)"\",\"payload\":{\"exec\":{\"data\":", 28);
+
+    if (tx_type == TX_TYPE_TRANSFER) {
+        tx_json_append((uint8_t *)"{}", 2);
+    } else {
+        tx_json_append((uint8_t *)"{\"ks\":{\"pred\":\"keys-all\",\"keys\":[\"", 34);
+        tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+        tx_json_append((uint8_t *)"\"]}}", 4);
+    }
+
+    tx_json_append((uint8_t *)",\"code\":\"(", 10);
+    tx_json_append((uint8_t *)namespace_and_module, strlen(namespace_and_module));
+
+    switch (tx_type) {
+        case TX_TYPE_TRANSFER:
+            tx_json_append((uint8_t *)".transfer", 9);
+            break;
+        case TX_TYPE_TRANSFER_CREATE:
+            tx_json_append((uint8_t *)".transfer-create", 16);
+            break;
+        case TX_TYPE_TRANSFER_CROSSCHAIN:
+            tx_json_append((uint8_t *)".transfer-crosschain", 20);
+            break;
+    }
+
+    tx_json_append((uint8_t *)" \\\"k:", 5);
+    tx_json_append((uint8_t *)address, address_len);
+    tx_json_append((uint8_t *)"\\\" \\\"k:", 7);
+    tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+    tx_json_append((uint8_t *)"\\\"", 2);
+
+    if (tx_type != TX_TYPE_TRANSFER) {
+        tx_json_append((uint8_t *)" (read-keyset \\\"ks\\\")", 21);
+    }
+
+    if (tx_type == TX_TYPE_TRANSFER_CROSSCHAIN) {
+        tx_json_append((uint8_t *)" \\\"", 3);
+        tx_json_append((uint8_t *)chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
+        tx_json_append((uint8_t *)"\\\"", 2);
+    }
+
+    tx_json_append((uint8_t *)" ", 1);
+    tx_json_append((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+    tx_json_append((uint8_t *)")\"}},\"signers\":[{\"pubKey\":\"", 27);
+    tx_json_append((uint8_t *)address, address_len);
+    tx_json_append((uint8_t *)"\",\"clist\":[{\"args\":[\"k:", 23);
+    tx_json_append((uint8_t *)address, address_len);
+    tx_json_append((uint8_t *)"\",\"k:", 5);
+    tx_json_append((uint8_t *)chunks[RECIPIENT_POS].data, chunks[RECIPIENT_POS].len);
+    tx_json_append((uint8_t *)"\",", 2);
+    tx_json_append((uint8_t *)chunks[AMOUNT_POS].data, chunks[AMOUNT_POS].len);
+
+    if (tx_type == TX_TYPE_TRANSFER_CROSSCHAIN) {
+        tx_json_append((uint8_t *)",\"", 2);
+        tx_json_append((uint8_t *)chunks[RECIPIENT_CHAIN_POS].data, chunks[RECIPIENT_CHAIN_POS].len);
+        tx_json_append((uint8_t *)"\"", 1);
+    }
+
+    tx_json_append((uint8_t *)"],\"name\":\"", 10);
+    tx_json_append((uint8_t *)namespace_and_module, strlen(namespace_and_module));
+    tx_json_append((uint8_t *)".TRANSFER", 9);
+
+    if (tx_type == TX_TYPE_TRANSFER_CROSSCHAIN) {
+        tx_json_append((uint8_t *)"_XCHAIN", 7);
+    }
+
+    tx_json_append((uint8_t *)"\"},{\"args\":[],\"name\":\"coin.GAS\"}]}],\"meta\":{\"creationTime\":", 59);
+    tx_json_append((uint8_t *)chunks[CREATION_TIME_POS].data, chunks[CREATION_TIME_POS].len);
+    tx_json_append((uint8_t *)",\"ttl\":", 7);
+    tx_json_append((uint8_t *)chunks[TTL_POS].data, chunks[TTL_POS].len);
+    tx_json_append((uint8_t *)",\"gasLimit\":", 12);
+    tx_json_append((uint8_t *)chunks[GAS_LIMIT_POS].data, chunks[GAS_LIMIT_POS].len);
+    tx_json_append((uint8_t *)",\"chainId\":\"", 12);
+    tx_json_append((uint8_t *)chunks[CHAIN_ID_POS].data, chunks[CHAIN_ID_POS].len);
+    tx_json_append((uint8_t *)"\",\"gasPrice\":", 13);
+    tx_json_append((uint8_t *)chunks[GAS_PRICE_POS].data, chunks[GAS_PRICE_POS].len);
+    tx_json_append((uint8_t *)",\"sender\":\"k:", 13);
+    tx_json_append((uint8_t *)address, address_len);
+    tx_json_append((uint8_t *)"\"},\"nonce\":\"", 12);
+    tx_json_append((uint8_t *)chunks[NONCE_POS].data, chunks[NONCE_POS].len);
+    tx_json_append((uint8_t *)"\"}", 2);
+
+    return parser_ok;
+}
+
+static parser_error_t parser_validate_chunks(chunk_t *chunks) {
+    if (chunks[RECIPIENT_POS].len != RECIPIENT_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[RECIPIENT_CHAIN_POS].len > RECIPIENT_CHAIN_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[NETWORK_POS].len > NETWORK_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[AMOUNT_POS].len > AMOUNT_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[NAMESPACE_POS].len > NAMESPACE_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[MODULE_POS].len > MODULE_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[GAS_PRICE_POS].len > GAS_PRICE_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[GAS_LIMIT_POS].len > GAS_LIMIT_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[CREATION_TIME_POS].len > CREATION_TIME_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[CHAIN_ID_POS].len > CHAIN_ID_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[NONCE_POS].len > NONCE_LEN) {
+        return parser_value_out_of_range;
+    }
+    if (chunks[TTL_POS].len > TTL_LEN) {
+        return parser_value_out_of_range;
+    }
+    return parser_ok;
 }
 
 const char *parser_getErrorDescription(parser_error_t err) {
@@ -212,6 +474,10 @@ const char *parser_getErrorDescription(parser_error_t err) {
             return "Unexpected chain";
         case parser_missing_field:
             return "missing field";
+        case parser_expert_mode_required:
+            return "Expert mode required for this operation";
+        case parser_unexpected_unparsed_bytes:
+            return "Unexpected unparsed bytes";
 
         case parser_display_idx_out_of_range:
             return "display index out of range";

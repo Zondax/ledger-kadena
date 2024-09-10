@@ -16,10 +16,18 @@
 #pragma once
 
 #include "coin.h"
-#include "os.h"
+#include "parser_txdef.h"
 #include "zxerror.h"
 
 void tx_initialize();
+
+/// Sets the transaction type
+/// \param type The type of the transaction to set
+void set_tx_type(tx_type_t type);
+
+/// Gets the current transaction type
+/// \return The current transaction type
+tx_type_t get_tx_type();
 
 /// Clears the transaction buffer
 void tx_reset();
@@ -30,6 +38,21 @@ void tx_reset();
 /// \param length
 /// \return It returns an error message if the buffer is too small.
 uint32_t tx_append(unsigned char *buffer, uint32_t length);
+
+/// Appends buffer to the end of JSON template buffer
+/// JSON template buffer will grow until it reaches the maximum allowed size
+/// \param buffer
+/// \param length
+/// \return It returns an error message if the buffer is too small.
+uint32_t tx_json_append(unsigned char *buffer, uint32_t length);
+
+/// Returns a pointer to the JSON template buffer
+/// \return Pointer to the JSON template buffer
+uint8_t *tx_json_get_buffer();
+
+/// Returns the length of the JSON template buffer
+/// \return Length of the JSON template buffer
+uint32_t tx_json_get_buffer_length();
 
 /// Returns size of the raw json transaction buffer
 /// \return
@@ -42,7 +65,7 @@ uint8_t *tx_get_buffer();
 /// Parse message stored in transaction buffer
 /// This function should be called as soon as full buffer data is loaded.
 /// \return It returns NULL if data is valid or error message otherwise.
-const char *tx_parse();
+const char *tx_parse(tx_type_t tx_type_parse);
 
 /// Return the number of items in the transaction
 zxerr_t tx_getNumItems(uint8_t *num_items);

@@ -41,10 +41,19 @@ __Z_INLINE zxerr_t app_fill_address() {
 }
 
 __Z_INLINE void app_sign() {
-    const uint8_t *message = tx_get_buffer();
-    const uint16_t messageLength = tx_get_buffer_length();
+    tx_type_t tx_type = get_tx_type();
+    const uint8_t *message = NULL;
+    uint16_t messageLength = 0;
 
-    const zxerr_t err = crypto_sign(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength);
+    if (tx_type == tx_type_transfer) {
+        message = tx_json_get_buffer();
+        messageLength = tx_json_get_buffer_length();
+    } else {
+        message = tx_get_buffer();
+        messageLength = tx_get_buffer_length();
+    }
+
+    const zxerr_t err = crypto_sign(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength, tx_type);
 
     if (err != zxerr_ok) {
         set_code(G_io_apdu_buffer, 0, APDU_CODE_SIGN_VERIFY_ERROR);

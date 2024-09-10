@@ -10,7 +10,9 @@ MUTATE_DEPTH = random.randint(1, 20)
 
 # (fuzzer name, max length, max time scale factor)
 CONFIGS = [
-    ('parser_parse', 17000, 4),
+    ('parser_parse_json', 17000, 4),
+    ('parser_parse_hash', 17000, 4),
+    ('parser_parse_transfer', 17000, 4),
 ]
 
 for config in CONFIGS:

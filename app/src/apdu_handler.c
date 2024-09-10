@@ -25,10 +25,20 @@
 #include "app_main.h"
 #include "coin.h"
 #include "crypto.h"
+#include "parser_txdef.h"
 #include "tx.h"
 #include "view.h"
 #include "view_internal.h"
 #include "zxmacros.h"
+
+#undef INS_GET_VERSION
+#define INS_GET_VERSION 0x20
+#undef INS_GET_ADDR
+#define INS_GET_ADDR 0x21
+#undef INS_SIGN
+#define INS_SIGN 0x22
+#define INS_SIGN_HASH 0x23
+#define INS_SIGN_TRANSACTION 0x24
 
 static bool tx_initialized = false;
 
@@ -109,12 +119,12 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
 }
 
 __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    zemu_log("handleSign\n");
+    zemu_log("handleSignJson\n");
     if (!process_chunk(tx, rx)) {
         THROW(APDU_CODE_OK);
     }
 
-    const char *error_msg = tx_parse();
+    const char *error_msg = tx_parse(get_tx_type());
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
@@ -186,6 +196,21 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
 
                 case INS_SIGN: {
                     CHECK_PIN_VALIDATED()
+                    set_tx_type(tx_type_json);
+                    handleSign(flags, tx, rx);
+                    break;
+                }
+
+                case INS_SIGN_HASH: {
+                    CHECK_PIN_VALIDATED()
+                    set_tx_type(tx_type_hash);
+                    handleSign(flags, tx, rx);
+                    break;
+                }
+
+                case INS_SIGN_TRANSACTION: {
+                    CHECK_PIN_VALIDATED()
+                    set_tx_type(tx_type_transfer);
                     handleSign(flags, tx, rx);
                     break;
                 }

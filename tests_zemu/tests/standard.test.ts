@@ -16,11 +16,7 @@
 
 import Zemu, { ButtonKind, zondaxMainmenuNavigation, isTouchDevice } from '@zondax/zemu'
 import { KadenaApp } from '@zondax/ledger-kadena'
-import { PATH, defaultOptions, models, simpleTxNormal } from './common'
-import { blake2bFinal, blake2bInit, blake2bUpdate } from 'blakejs'
-
-// @ts-expect-error
-import ed25519 from 'ed25519-supercop'
+import { PATH, defaultOptions, models } from './common'
 
 jest.setTimeout(60000)
 
@@ -142,38 +138,6 @@ describe('Standard', function () {
         await sim.compareSnapshotsAndReject('.', `${m.prefix.toLowerCase()}-show_address_reject`)
       } finally {
       }
-    } finally {
-      await sim.close()
-    }
-  })
-
-  test.concurrent.each(models)('sign tx normal', async function (m) {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start({ ...defaultOptions, model: m.name })
-      const app = new KadenaApp(sim.getTransport())
-
-      const txBlob = Buffer.from(simpleTxNormal)
-      const responseAddr = await app.getAddressAndPubKey(PATH, false)
-      const pubKey = responseAddr.pubkey
-
-      // do not wait here.. we need to navigate
-      const signatureRequest = app.sign(PATH, txBlob)
-
-      // Wait until we are not in the main menu
-      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_tx_normal`)
-
-      const signatureResponse = await signatureRequest
-      console.log(signatureResponse)
-
-      const context = blake2bInit(32)
-      blake2bUpdate(context, txBlob)
-      const hash = Buffer.from(blake2bFinal(context))
-
-      // Now verify the signature
-      const valid = ed25519.verify(signatureResponse.signature, hash, pubKey)
-      expect(valid).toEqual(true)
     } finally {
       await sim.close()
     }

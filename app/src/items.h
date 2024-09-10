@@ -20,9 +20,10 @@
 #include "items_defs.h"
 #include "json_parser.h"
 #include "parser_common.h"
+#include "parser_txdef.h"
 #include "zxtypes.h"
 
 items_error_t items_initItems();
-items_error_t items_storeItems();
+items_error_t items_storeItems(tx_type_t tx_type);
 uint16_t items_getTotalItems();
 item_array_t *items_getItemArray();

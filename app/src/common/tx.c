@@ -20,38 +20,63 @@
 
 #include "apdu_codes.h"
 #include "buffering.h"
+#include "buffering_json.h"
 #include "parser.h"
 #include "zxmacros.h"
 
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
+#define TEMPLATE_JSON_BUFFER_SIZE 1024
+#if !defined(TARGET_NANOS)
 #define RAM_BUFFER_SIZE 8192
-#define FLASH_BUFFER_SIZE 16384
-#elif defined(TARGET_NANOS)
+#define FLASH_BUFFER_SIZE 16384 - TEMPLATE_JSON_BUFFER_SIZE
+#else
 #define RAM_BUFFER_SIZE 256
-#define FLASH_BUFFER_SIZE 8192
+#define FLASH_BUFFER_SIZE 8192 - TEMPLATE_JSON_BUFFER_SIZE
 #endif
 
 // Ram
 uint8_t ram_buffer[RAM_BUFFER_SIZE];
 
+tx_type_t tx_type;
+
 // Flash
 typedef struct {
     uint8_t buffer[FLASH_BUFFER_SIZE];
+    uint8_t templete_json[FLASH_BUFFER_SIZE];
 } storage_t;
 
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
 storage_t NV_CONST N_appdata_impl __attribute__((aligned(64)));
 #define N_appdata (*(NV_VOLATILE storage_t *)PIC(&N_appdata_impl))
+#else
+storage_t N_appdata_impl __attribute__((aligned(64)));
+#define N_appdata (*(storage_t *)PIC(&N_appdata_impl))
 #endif
 
-static tx_json_t tx_obj;
 static parser_context_t ctx_parsed_tx;
+
+void set_tx_type(tx_type_t type) { tx_type = type; }
+
+tx_type_t get_tx_type() { return tx_type; }
+
+void tx_json_initialize() { buffering_json_init((uint8_t *)N_appdata.templete_json, FLASH_BUFFER_SIZE); }
+
+void tx_json_reset() { buffering_json_reset(); }
+
+uint32_t tx_json_append(unsigned char *buffer, uint32_t length) { return buffering_json_append(buffer, length); }
+
+uint32_t tx_json_get_buffer_length() { return buffering_json_get_buffer()->pos; }
+
+uint8_t *tx_json_get_buffer() { return buffering_json_get_buffer()->data; }
 
 void tx_initialize() {
     buffering_init(ram_buffer, sizeof(ram_buffer), (uint8_t *)N_appdata.buffer, sizeof(N_appdata.buffer));
+    tx_json_initialize();
 }
 
-void tx_reset() { buffering_reset(); }
+void tx_reset() {
+    buffering_reset();
+    tx_json_reset();
+}
 
 uint32_t tx_append(unsigned char *buffer, uint32_t length) { return buffering_append(buffer, length); }
 
@@ -59,10 +84,8 @@ uint32_t tx_get_buffer_length() { return buffering_get_buffer()->pos; }
 
 uint8_t *tx_get_buffer() { return buffering_get_buffer()->data; }
 
-const char *tx_parse() {
-    MEMZERO(&tx_obj, sizeof(tx_obj));
-
-    uint8_t err = parser_parse(&ctx_parsed_tx, tx_get_buffer(), tx_get_buffer_length(), &tx_obj);
+const char *tx_parse(tx_type_t tx_type_parse) {
+    uint8_t err = parser_parse(&ctx_parsed_tx, tx_get_buffer(), tx_get_buffer_length(), tx_type_parse);
 
     CHECK_APP_CANARY()
 
@@ -79,8 +102,6 @@ const char *tx_parse() {
 
     return NULL;
 }
-
-void tx_parse_reset() { MEMZERO(&tx_obj, sizeof(tx_obj)); }
 
 zxerr_t tx_getNumItems(uint8_t *num_items) {
     parser_error_t err = parser_getNumItems(&ctx_parsed_tx, num_items);
