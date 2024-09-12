@@ -22,6 +22,7 @@
 
 #include "actions.h"
 #include "addr.h"
+#include "apdu_handler_legacy.h"
 #include "app_main.h"
 #include "coin.h"
 #include "crypto.h"
@@ -38,7 +39,7 @@
 #undef INS_SIGN
 #define INS_SIGN 0x22
 #define INS_SIGN_HASH 0x23
-#define INS_SIGN_TRANSACTION 0x24
+#define INS_SIGN_TRANSFER 0x24
 
 static bool tx_initialized = false;
 
@@ -124,7 +125,7 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
         THROW(APDU_CODE_OK);
     }
 
-    const char *error_msg = tx_parse(get_tx_type());
+    const char *error_msg = tx_parse(tx_get_buffer_length(), get_tx_type());
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
@@ -208,10 +209,46 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
                     break;
                 }
 
-                case INS_SIGN_TRANSACTION: {
+                case INS_SIGN_TRANSFER: {
                     CHECK_PIN_VALIDATED()
                     set_tx_type(tx_type_transfer);
                     handleSign(flags, tx, rx);
+                    break;
+                }
+
+                case BCOMP_GET_VERSION: {
+                    CHECK_PIN_VALIDATED()
+                    legacy_handleGetVersion(tx);
+                    break;
+                }
+
+                case BCOMP_VERIFY_ADDRESS: {
+                    CHECK_PIN_VALIDATED()
+                    legacy_handleGetAddr(flags, tx, rx, 1);
+                    break;
+                }
+
+                case BCOMP_GET_PUBKEY: {
+                    CHECK_PIN_VALIDATED()
+                    legacy_handleGetAddr(flags, tx, rx, 0);
+                    break;
+                }
+
+                case BCOMP_SIGN_JSON_TX: {
+                    CHECK_PIN_VALIDATED()
+                    legacy_handleSignTransaction(flags, tx, rx);
+                    break;
+                }
+
+                case BCOMP_SIGN_TX_HASH: {
+                    CHECK_PIN_VALIDATED()
+                    legacy_handleSignHash(flags, tx, rx);
+                    break;
+                }
+
+                case BCOMP_MAKE_TRANSFER_TX: {
+                    CHECK_PIN_VALIDATED()
+                    legacy_handleSignTransferTx(flags, tx, rx);
                     break;
                 }
 
@@ -228,15 +265,20 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
         }
         CATCH(EXCEPTION_IO_RESET) { THROW(EXCEPTION_IO_RESET); }
         CATCH_OTHER(e) {
-            switch (e & 0xF000) {
-                case 0x6000:
-                case APDU_CODE_OK:
-                    sw = e;
-                    break;
-                default:
-                    sw = 0x6800 | (e & 0x7FF);
-                    break;
+            if (e == APDU_CODE_LEGACY_PARSER_ERROR) {
+                sw = e;
+            } else {
+                switch (e & 0xF000) {
+                    case 0x6000:
+                    case APDU_CODE_OK:
+                        sw = e;
+                        break;
+                    default:
+                        sw = 0x6800 | (e & 0x7FF);
+                        break;
+                }
             }
+
             G_io_apdu_buffer[*tx] = sw >> 8;
             G_io_apdu_buffer[*tx + 1] = sw & 0xFF;
             *tx += 2;

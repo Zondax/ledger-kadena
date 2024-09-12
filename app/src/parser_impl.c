@@ -487,6 +487,22 @@ const char *parser_getErrorDescription(parser_error_t err) {
             return "Tx obj empty";
         case parser_unexpected_value:
             return "Unexpected value";
+        case parser_json_too_many_tokens:
+            return "NOMEM: JSON string contains too many tokens";
+        case parser_json_not_a_transfer:
+            return "JSON is not a transfer";
+        case parser_invalid_meta_field:
+            return "Invalid meta field";
+        case parser_json_unexpected_error:
+            return "Unexpected JSON error";
+        case parser_name_tx_transfer:
+            return "Transaction type: Transfer";
+        case parser_name_tx_transfer_xchain:
+            return "Transaction type: Cross-chain Transfer";
+        case parser_name_rotate:
+            return "Transaction type: Rotate";
+        case parser_name_gas:
+            return "Transaction type: Gas";
 
         default:
             return "Unrecognized error code";

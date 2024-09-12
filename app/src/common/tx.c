@@ -84,8 +84,8 @@ uint32_t tx_get_buffer_length() { return buffering_get_buffer()->pos; }
 
 uint8_t *tx_get_buffer() { return buffering_get_buffer()->data; }
 
-const char *tx_parse(tx_type_t tx_type_parse) {
-    uint8_t err = parser_parse(&ctx_parsed_tx, tx_get_buffer(), tx_get_buffer_length(), tx_type_parse);
+const char *tx_parse(uint32_t buffer_length, tx_type_t tx_type_parse) {
+    uint8_t err = parser_parse(&ctx_parsed_tx, tx_get_buffer(), buffer_length, tx_type_parse);
 
     CHECK_APP_CANARY()
 
