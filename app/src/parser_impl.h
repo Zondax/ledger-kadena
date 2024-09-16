@@ -25,6 +25,10 @@
 extern "C" {
 #endif
 
+#define TX_TYPE_TRANSFER 0
+#define TX_TYPE_TRANSFER_CREATE 1
+#define TX_TYPE_TRANSFER_CROSSCHAIN 2
+
 #define JSON_NETWORK_ID "networkId"
 #define JSON_META "meta"
 #define JSON_SIGNERS "signers"
@@ -43,11 +47,22 @@ typedef struct {
     const uint8_t *buffer;
     uint16_t bufferLen;
     uint16_t offset;
-    tx_json_t *tx_obj;
+    union {
+        tx_json_t *json;
+        tx_hash_t *hash;
+    };
+
 } parser_context_t;
 
+typedef struct {
+    uint8_t len;
+    char *data;
+} chunk_t;
+
 parser_error_t _read_json_tx(parser_context_t *c);
-tx_json_t *parser_getParserTxObj();
+parser_error_t _read_hash_tx(parser_context_t *c);
+tx_json_t *parser_getParserJsonObj();
+tx_hash_t *parser_getParserHashObj();
 parser_error_t parser_findPubKeyInClist(uint16_t key_token_index);
 parser_error_t parser_arrayElementToString(uint16_t json_token_index, uint16_t element_idx, const char **outVal,
                                            uint8_t *outValLen);
@@ -55,6 +70,7 @@ parser_error_t parser_validateMetaField();
 parser_error_t parser_getTxName(uint16_t token_index);
 parser_error_t parser_getValidClist(uint16_t *clist_token_index, uint16_t *num_args);
 bool items_isNullField(uint16_t json_token_index);
+parser_error_t parser_createJsonTemplate(parser_context_t *ctx);
 
 #ifdef __cplusplus
 }

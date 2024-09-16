@@ -19,6 +19,7 @@
 #include "coin.h"
 #include "crypto_helper.h"
 #include "cx.h"
+#include "parser_txdef.h"
 #include "zxformat.h"
 #include "zxmacros.h"
 
@@ -62,7 +63,8 @@ catch_cx_error:
     return error;
 }
 
-zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen) {
+zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen,
+                    tx_type_t tx_type) {
     if (signature == NULL || message == NULL || signatureMaxlen < ED25519_SIGNATURE_SIZE || messageLen == 0) {
         return zxerr_invalid_crypto_settings;
     }
@@ -71,8 +73,10 @@ zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t 
     uint8_t privateKeyData[SK_LEN_25519] = {0};
 
     uint8_t hash[BLAKE2B_HASH_SIZE] = {0};
-    if (blake2b_hash((uint8_t *)message, messageLen, hash) != zxerr_ok) {
-        return zxerr_unknown;
+    if (tx_type == tx_type_hash) {
+        MEMCPY(hash, message, BLAKE2B_HASH_SIZE);
+    } else {
+        CHECK_ZXERR(blake2b_hash((uint8_t *)message, messageLen, hash))
     }
 
     zxerr_t error = zxerr_unknown;

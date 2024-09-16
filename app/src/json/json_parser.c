@@ -18,8 +18,6 @@
 #include "../common/parser_common.h"
 #include "jsmn/jsmn.h"
 
-#define EQUALS(_P, _Q, _LEN) (MEMCMP((const void *)PIC(_P), (const void *)PIC(_Q), (_LEN)) == 0)
-
 /**
  * Create JSON parser over an array of tokens
  */
@@ -192,7 +190,13 @@ parser_error_t object_get_value(const parsed_json_t *json, uint16_t object_token
         prev_element_end = value_token.end;
 
         if (((uint16_t)strlen(key_name)) == (key_token.end - key_token.start)) {
-            if (EQUALS(key_name, json->buffer + key_token.start, key_token.end - key_token.start)) {
+            uint16_t i = 0;
+            for (; i < (uint16_t)strlen(key_name); i++) {
+                if (json->buffer[key_token.start + i] != key_name[i]) {
+                    break;
+                }
+            }
+            if (i == strlen(key_name)) {
                 return parser_ok;
             }
         }
@@ -210,14 +214,10 @@ parser_error_t json_parse(parsed_json_t *parsed_json, const char *buffer, uint16
     parsed_json->buffer = buffer;
     parsed_json->bufferLen = bufferLen;
 
-    int32_t num_tokens =
+    int16_t num_tokens =
         jsmn_parse(&parser, parsed_json->buffer, parsed_json->bufferLen, parsed_json->tokens, MAX_NUMBER_OF_TOKENS);
 
-#ifdef APP_TESTING
-    char tmpBuffer[100];
-    snprintf(tmpBuffer, sizeof(tmpBuffer), "tokens: %d\n", num_tokens);
-    zemu_log(tmpBuffer);
-#endif
+    ZEMU_LOGF(35, "num_tokens: %d\n", num_tokens);
 
     if (num_tokens < 0) {
         switch (num_tokens) {

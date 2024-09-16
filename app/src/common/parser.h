@@ -22,11 +22,14 @@ extern "C" {
 
 #include "parser_impl.h"
 
+char *parser_get_json_template_buffer();
+uint16_t parser_get_json_template_buffer_len();
+
 const char *parser_getErrorDescription(parser_error_t err);
 const char *parser_getMsgPackTypeDescription(uint8_t type);
 
 //// parses a tx buffer
-parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, tx_json_t *tx_obj);
+parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, tx_type_t tx_type);
 
 //// verifies tx fields
 parser_error_t parser_validate(parser_context_t *ctx);

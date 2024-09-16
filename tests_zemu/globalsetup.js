@@ -1,15 +1,14 @@
 const Zemu = require('@zondax/zemu')
 
-const catchExit = async () => {
-  process.on('SIGINT', () => {
-    Zemu.default.stopAllEmuContainers(function () {
-      process.exit()
-    })
+const catchExit = () => {
+  process.on('SIGINT', async () => {
+    await Zemu.default.stopAllEmuContainers()
+    process.exit()
   })
 }
 
 module.exports = async () => {
-  await catchExit()
+  catchExit()
   await Zemu.default.checkAndPullImage()
   await Zemu.default.stopAllEmuContainers()
 }

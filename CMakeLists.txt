@@ -140,7 +140,10 @@ file(GLOB_RECURSE LIB_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/hexutils.c
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/zxmacros.c
         ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/zxformat.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/deps/ledger-zxlib/src/buffering.c
         ####
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/buffering_json.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/src/tx.c
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/parser.c
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/items.c
         ${CMAKE_CURRENT_SOURCE_DIR}/app/src/items_format.c
@@ -172,7 +175,9 @@ target_link_libraries(app_lib PUBLIC)
 #  Fuzz Targets
 if(ENABLE_FUZZING)
     set(FUZZ_TARGETS
-        parser_parse
+        parser_parse_json
+        parser_parse_hash
+        parser_parse_transfer
         )
 
     foreach(target ${FUZZ_TARGETS})

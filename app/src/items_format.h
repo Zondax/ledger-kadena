@@ -23,6 +23,8 @@
 #define WARNING_TEXT                                                                                                   \
     "UNSAFE TRANSACTION. This transaction's code was not recognized and does not limit capabilities for all signers. " \
     "Signing this transaction may make arbitrary actions on the chain including loss of all funds."
+#define HASH_WARNING_TEXT \
+    "Blind Signing a Transaction Hash is a very unusual operation. Do not continue unless you know what you are doing"
 #define CAUTION_TEXT "'meta' field of transaction not recognized"
 #define TX_TOO_LARGE_TEXT \
     "Transaction too large for Ledger to display.  PROCEED WITH GREAT CAUTION.  Do you want to continue?"
@@ -30,6 +32,7 @@
 items_error_t items_stdToDisplayString(item_t item, char *outVal, uint16_t outValLen);
 items_error_t items_nothingToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
 items_error_t items_warningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
+items_error_t items_hashWarningToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
 items_error_t items_cautionToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
 items_error_t items_txTooLargeToDisplayString(__Z_UNUSED item_t item, char *outVal, uint16_t outValLen);
 items_error_t items_signingToDisplayString(item_t item, char *outVal, uint16_t outValLen);

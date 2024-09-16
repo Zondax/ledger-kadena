@@ -25,38 +25,7 @@ extern "C" {
 
 #include "coin.h"
 
-typedef struct {
-    uint16_t len;
-    const uint8_t *ptr;
-} Bytes_t;
-
-typedef struct tx_textual_t {
-    size_t n_containers;
-    uint8_t n_expert;
-    uint8_t tmpBuffer[625];
-} tx_textual_t;
-
-typedef struct {
-    // These are internal values used for tracking the state of the query/search
-    uint16_t _item_index_current;
-
-    // maximum json tree level. Beyond this tree depth, key/values are flattened
-    uint8_t max_level;
-
-    // maximum tree traversal depth. This limits possible stack overflow issues
-    uint8_t max_depth;
-
-    // Index of the item to retrieve
-    int16_t item_index;
-    // Chunk of the item to retrieve (assuming partitioning based on out_val_len chunks)
-    int16_t page_index;
-
-    // These fields (out_*) are where query results are placed
-    char *out_key;
-    uint16_t out_key_len;
-    char *out_val;
-    int16_t out_val_len;
-} tx_query_t;
+typedef enum tx_type_t { tx_type_json, tx_type_hash, tx_type_transfer } tx_type_t;
 
 typedef struct {
     // Buffer to the original tx blob
@@ -81,10 +50,12 @@ typedef struct {
     uint8_t filter_msg_from_count;
     int32_t filter_msg_from_valid_idx;
     const char *own_addr;
-
-    // current tx query
-    tx_query_t query;
 } tx_json_t;
+
+typedef struct {
+    const char *tx;
+    uint8_t hash_len;
+} tx_hash_t;
 
 #ifdef __cplusplus
 }
