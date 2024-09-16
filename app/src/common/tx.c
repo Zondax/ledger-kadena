@@ -41,7 +41,7 @@ tx_type_t tx_type;
 // Flash
 typedef struct {
     uint8_t buffer[FLASH_BUFFER_SIZE];
-    uint8_t templete_json[FLASH_BUFFER_SIZE];
+    uint8_t templete_json[TEMPLATE_JSON_BUFFER_SIZE];
 } storage_t;
 
 #if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
@@ -84,8 +84,8 @@ uint32_t tx_get_buffer_length() { return buffering_get_buffer()->pos; }
 
 uint8_t *tx_get_buffer() { return buffering_get_buffer()->data; }
 
-const char *tx_parse(tx_type_t tx_type_parse) {
-    uint8_t err = parser_parse(&ctx_parsed_tx, tx_get_buffer(), tx_get_buffer_length(), tx_type_parse);
+const char *tx_parse(uint32_t buffer_length, tx_type_t tx_type_parse) {
+    uint8_t err = parser_parse(&ctx_parsed_tx, tx_get_buffer(), buffer_length, tx_type_parse);
 
     CHECK_APP_CANARY()
 
