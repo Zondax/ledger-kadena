@@ -135,10 +135,10 @@ describe.each(TRANSACTIONS_TEST_CASES)('Tx transfer', function (data) {
 
       const signatureResponse = await signatureRequest
 
-      const decodedHash = decodeHash(signatureResponse.hash)
+      const decodedHash = decodeHash(signatureResponse.pact_command.hash)
 
       // Now verify the signature
-      const valid = ed25519.verify(signatureResponse.signature, decodedHash, pubKey)
+      const valid = ed25519.verify(signatureResponse.pact_command.sigs[0].sig, decodedHash, pubKey)
       expect(valid).toEqual(true)
     } finally {
       await sim.close()
