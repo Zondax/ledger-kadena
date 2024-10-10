@@ -273,9 +273,9 @@ All other packets/chunks contain data chunks that are described below
 
 | Field      | Type     | Content          | Note                            |
 | ---------- | -------- | ---------------- | ------------------------------- |
-| MAJOR      | byte (2) | Version Major    | 0..65535                        |
-| MINOR      | byte (2) | Version Minor    | 0..65535                        |
-| PATCH      | byte (2) | Version Patch    | 0..65535                        |
+| MAJOR      | byte (1) | Version Major    | 0..255                          |
+| MINOR      | byte (1) | Version Minor    | 0..255                          |
+| PATCH      | byte (1) | Version Patch    | 0..255                          |
 | SW1-SW2    | byte (2) | Return code      | see list of return codes        |
 
 ---

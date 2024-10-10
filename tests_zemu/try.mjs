@@ -92,12 +92,12 @@ async function main() {
 
   signatureRequest = app.signTransferTx(txParams.path, txParams)
   signatureResponse = await signatureRequest
-  const decodedHash = decodeHash(signatureResponse.hash)
+  const decodedHash = decodeHash(signatureResponse.pact_command.hash)
 
-  console.log(signatureResponse.signature.toString('hex'))
+  console.log(signatureResponse.pact_command.sigs[0].sig.toString('hex'))
   console.log(decodedHash.toString('hex'))
 
-  await verifySignature(signatureResponse.signature, decodedHash, pubKey, false)
+  await verifySignature(signatureResponse.pact_command.sigs[0].sig, decodedHash, pubKey, false)
 }
 
 ;(async () => {
