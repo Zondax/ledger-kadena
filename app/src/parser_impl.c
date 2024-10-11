@@ -485,6 +485,8 @@ const char *parser_getErrorDescription(parser_error_t err) {
             return "display page out of range";
         case parser_tx_obj_empty:
             return "Tx obj empty";
+        case parser_blindsign_mode_required:
+            return "Blind signing mode required";
         case parser_unexpected_value:
             return "Unexpected value";
         case parser_json_too_many_tokens:

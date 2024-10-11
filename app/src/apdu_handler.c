@@ -126,12 +126,17 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
         THROW(APDU_CODE_OK);
     }
 
-    const char *error_msg = tx_parse(tx_get_buffer_length(), get_tx_type());
+    uint8_t error_code;
+    const char *error_msg = tx_parse(tx_get_buffer_length(), get_tx_type(), &error_code);
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
         memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
+        if (error_code == parser_blindsign_mode_required) {
+            *flags |= IO_ASYNCH_REPLY;
+            view_blindsign_error_show();
+        }
         THROW(APDU_CODE_DATA_INVALID);
     }
 

@@ -72,13 +72,15 @@ describe.each(HASH_TEST_CASES)('Hash transactions', function (data) {
       const responseAddr = await app.getAddressAndPubKey(data.path)
       const pubKey = responseAddr.pubkey
 
-      await sim.toggleExpertMode()
+      // Enable blind signing mode
+      await sim.toggleBlindSigning()
+
       // do not wait here... we need to navigate
       const signatureRequest = app.signHash(data.path, data.hash)
 
       // // Wait until we are not in the main menu
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_${data.name}`)
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-sign_${data.name}`,true, 0, 15000, true)
 
       const signatureResponse = await signatureRequest
 
