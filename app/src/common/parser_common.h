@@ -56,6 +56,7 @@ typedef enum {
     parser_missing_field,
     paser_unknown_transaction,
     parser_tx_obj_empty,
+    parser_blindsign_mode_required,
 
     // Coin Specific
     parser_json_zero_tokens,

@@ -39,6 +39,9 @@ async function main() {
   const { publicKey } = await app.getPublicKey(PATH)
   console.log('Pubkey: ', publicKey.toString('hex'))
 
+  const resp = await app.getVersion()
+  console.log('Version', resp)
+
   // Sign a transaction
   console.log('Signing a transaction')
   const blob =

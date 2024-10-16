@@ -296,16 +296,11 @@ bool legacy_process_transfer_chunk(uint32_t rx) {
 }
 
 void legacy_handleGetVersion(volatile uint32_t *tx) {
-    G_io_apdu_buffer[1] = (LEDGER_MAJOR_VERSION >> 8) & 0xFF;
-    G_io_apdu_buffer[2] = (LEDGER_MAJOR_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[0] = (LEDGER_MAJOR_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[1] = (LEDGER_MINOR_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[2] = (LEDGER_PATCH_VERSION >> 0) & 0xFF;
 
-    G_io_apdu_buffer[3] = (LEDGER_MINOR_VERSION >> 8) & 0xFF;
-    G_io_apdu_buffer[4] = (LEDGER_MINOR_VERSION >> 0) & 0xFF;
-
-    G_io_apdu_buffer[5] = (LEDGER_PATCH_VERSION >> 8) & 0xFF;
-    G_io_apdu_buffer[6] = (LEDGER_PATCH_VERSION >> 0) & 0xFF;
-
-    *tx += 6;
+    *tx += 3;
     THROW(APDU_CODE_OK);
 }
 
@@ -342,7 +337,7 @@ void legacy_handleSignTransaction(volatile uint32_t *flags, volatile uint32_t *t
 
     uint32_t buffer_length = legacy_check_request(tx);
 
-    const char *error_msg = tx_parse(buffer_length, tx_type_json);
+    const char *error_msg = tx_parse(buffer_length, tx_type_json, NULL);
     tx_type = tx_type_json;
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
@@ -366,13 +361,18 @@ void legacy_handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, uint
 
     uint32_t buffer_length = legacy_check_request(tx);
 
-    const char *error_msg = tx_parse(buffer_length, tx_type_hash);
+    uint8_t error_code;
+    const char *error_msg = tx_parse(buffer_length, tx_type_hash, &error_code);
     tx_type = tx_type_hash;
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
         memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
+        if (error_code == parser_blindsign_mode_required) {
+            *flags |= IO_ASYNCH_REPLY;
+            view_blindsign_error_show();
+        }
         THROW(APDU_CODE_DATA_INVALID);
     }
 
@@ -393,7 +393,7 @@ void legacy_handleSignTransferTx(volatile uint32_t *flags, volatile uint32_t *tx
 
     uint32_t buffer_length = tx_get_buffer_length();
 
-    const char *error_msg = tx_parse(buffer_length, tx_type_transfer);
+    const char *error_msg = tx_parse(buffer_length, tx_type_transfer, NULL);
     tx_type = tx_type_transfer;
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
