@@ -14,7 +14,7 @@
  *  limitations under the License.
  ******************************************************************************* */
 
-import Zemu from '@zondax/zemu'
+import Zemu, {ButtonKind, isTouchDevice, TouchNavigation} from '@zondax/zemu'
 import { KadenaApp, TransferTxType, TransferCrossChainTxParams } from '@zondax/ledger-kadena'
 import { PATH, defaultOptions, models } from './common'
 import { blake2bFinal, blake2bInit, blake2bUpdate } from 'blakejs'
@@ -72,8 +72,17 @@ describe.each(HASH_TEST_CASES)('Hash transactions', function (data) {
       const responseAddr = await app.getAddressAndPubKey(data.path)
       const pubKey = responseAddr.pubkey
 
-      // Enable blind signing mode
-      await sim.toggleBlindSigning()
+      // Enable blind signing mode (this need to be fixed on zemu, as the current fn is not working anymore)
+      if(isTouchDevice(m.name)){
+        const nav = new TouchNavigation(m.name, [
+          ButtonKind.InfoButton,
+          ButtonKind.ToggleSettingButton3,
+          ButtonKind.SettingsQuitButton,
+        ]);
+        await sim.navigate(".", `${m.prefix.toLowerCase()}-sign_${data.name}`, nav.schedule, true, false, 0)
+      } else {
+        await sim.toggleBlindSigning()
+      }
 
       // do not wait here... we need to navigate
       const signatureRequest = app.signHash(data.path, data.hash)
