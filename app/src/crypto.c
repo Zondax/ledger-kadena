@@ -116,6 +116,8 @@ zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrRe
 
     *addrResponseLen = 0;
 
+    // Calculate the pk only if the hd path has changed; otherwise, use the last computed pk. This avoids delays when the
+    // user reviews a transaction
     if (MEMCMP(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT) != 0) {
         CHECK_ZXERR(crypto_extractPublicKey(address, sizeof(address)))
         MEMCPY(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT);
