@@ -118,13 +118,12 @@ zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrRe
 
     if (MEMCMP(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT) != 0) {
         CHECK_ZXERR(crypto_extractPublicKey(address, sizeof(address)))
+        MEMCPY(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT);
     }
 
     MEMCPY(buffer, address, PUB_KEY_LENGTH);
 
     *addrResponseLen = PUB_KEY_LENGTH;
-
-    MEMCPY(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT);
 
     return zxerr_ok;
 }
