@@ -49,17 +49,14 @@ describe('Standard', function () {
     try {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new KadenaApp(sim.getTransport())
-      try {
-        const resp = await app.getVersion()
-        console.log(resp)
 
-        expect(resp).toHaveProperty('testMode')
-        expect(resp).toHaveProperty('major')
-        expect(resp).toHaveProperty('minor')
-        expect(resp).toHaveProperty('patch')
-      } catch {
-        console.log('getVersion error')
-      }
+      const resp = await app.getVersion()
+      console.log(resp)
+
+      expect(resp).toHaveProperty('testMode')
+      expect(resp).toHaveProperty('major')
+      expect(resp).toHaveProperty('minor')
+      expect(resp).toHaveProperty('patch')
     } finally {
       await sim.close()
     }
@@ -67,22 +64,23 @@ describe('Standard', function () {
 
   test.concurrent.each(models)('get address', async function (m) {
     const sim = new Zemu(m.path)
+    const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new KadenaApp(sim.getTransport())
 
-      try {
-        const resp = await app.getAddressAndPubKey(PATH, false)
+      const resp = await app.getAddressAndPubKey(PATH, false)
 
-        console.log(resp)
-        console.log(resp.pubkey.toString('hex'))
-        console.log(resp.address)
+      console.log(resp)
+      console.log(resp.pubkey.toString('hex'))
+      console.log(resp.address)
+      //
 
-        // The address is not checked because the public key is used as an address in the app
-        expect(resp.pubkey.toString('hex')).toEqual(expected_pk)
-      } catch {
-        console.log('getAddress error')
-      }
+      // pubkey: <Buffer de 12 b5 e1 6b 93 fe 81 ca 4d 70 65 6b ee 43 34 f2 e4 0f 9f 28 b9 79 6e 79 2d 28 f2 ce ad 74 ad>,
+      //     address: ''
+      //de12b5e16b93fe81ca4d70656bee4334f2e40f9f28b9796e792d28f2cead74ad
+      // The address is not checked because the public key is used as an address in the app
+      expect(resp.pubkey.toString('hex')).toEqual(expected_pk)
     } finally {
       await sim.close()
     }
