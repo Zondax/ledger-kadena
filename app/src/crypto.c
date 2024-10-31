@@ -25,8 +25,6 @@
 
 uint32_t hdPath[HDPATH_LEN_DEFAULT];
 
-// #{TODO} --> Check pubkey and sign methods
-
 zxerr_t crypto_extractPublicKey(uint8_t *pubKey, uint16_t pubKeyLen) {
     if (pubKey == NULL || pubKeyLen < PUB_KEY_LENGTH) {
         return zxerr_invalid_crypto_settings;
@@ -105,6 +103,7 @@ catch_cx_error:
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen) {
     static uint8_t address[65];
     static uint8_t is_computed = 0;
+    static uint32_t last_hdPath[HDPATH_LEN_DEFAULT] = {0};
 
     if (buffer == NULL || addrResponseLen == NULL) {
         return zxerr_out_of_bounds;
@@ -118,7 +117,7 @@ zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrRe
 
     *addrResponseLen = 0;
 
-    if (!is_computed) {
+    if (!is_computed || MEMCMP(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT) != 0) {
         CHECK_ZXERR(crypto_extractPublicKey(address, sizeof(address)))
         is_computed = 1;
     }
@@ -126,6 +125,8 @@ zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrRe
     MEMCPY(buffer, address, PUB_KEY_LENGTH);
 
     *addrResponseLen = PUB_KEY_LENGTH;
+
+    MEMCPY(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT);
 
     return zxerr_ok;
 }
