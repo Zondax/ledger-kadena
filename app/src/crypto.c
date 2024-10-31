@@ -102,7 +102,6 @@ catch_cx_error:
 
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen) {
     static uint8_t address[65];
-    static uint8_t is_computed = 0;
     static uint32_t last_hdPath[HDPATH_LEN_DEFAULT] = {0};
 
     if (buffer == NULL || addrResponseLen == NULL) {
@@ -117,9 +116,8 @@ zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrRe
 
     *addrResponseLen = 0;
 
-    if (!is_computed || MEMCMP(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT) != 0) {
+    if (MEMCMP(last_hdPath, hdPath, sizeof(uint32_t) * HDPATH_LEN_DEFAULT) != 0) {
         CHECK_ZXERR(crypto_extractPublicKey(address, sizeof(address)))
-        is_computed = 1;
     }
 
     MEMCPY(buffer, address, PUB_KEY_LENGTH);
