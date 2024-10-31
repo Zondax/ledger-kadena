@@ -49,17 +49,14 @@ describe('Standard', function () {
     try {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new KadenaApp(sim.getTransport())
-      try {
-        const resp = await app.getVersion()
-        console.log(resp)
 
-        expect(resp).toHaveProperty('testMode')
-        expect(resp).toHaveProperty('major')
-        expect(resp).toHaveProperty('minor')
-        expect(resp).toHaveProperty('patch')
-      } catch {
-        console.log('getVersion error')
-      }
+      const resp = await app.getVersion()
+      console.log(resp)
+
+      expect(resp).toHaveProperty('testMode')
+      expect(resp).toHaveProperty('major')
+      expect(resp).toHaveProperty('minor')
+      expect(resp).toHaveProperty('patch')
     } finally {
       await sim.close()
     }
@@ -71,18 +68,14 @@ describe('Standard', function () {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new KadenaApp(sim.getTransport())
 
-      try {
-        const resp = await app.getAddressAndPubKey(PATH, false)
+      const resp = await app.getAddressAndPubKey(PATH, false)
 
-        console.log(resp)
-        console.log(resp.pubkey.toString('hex'))
-        console.log(resp.address)
+      console.log(resp)
+      console.log(resp.pubkey.toString('hex'))
+      console.log(resp.address)
 
-        // The address is not checked because the public key is used as an address in the app
-        expect(resp.pubkey.toString('hex')).toEqual(expected_pk)
-      } catch {
-        console.log('getAddress error')
-      }
+      // The address is not checked because the public key is used as an address in the app
+      expect(resp.pubkey.toString('hex')).toEqual(expected_pk)
     } finally {
       await sim.close()
     }
@@ -134,10 +127,8 @@ describe('Standard', function () {
 
       // Wait until we are not in the main menu
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      try {
-        await sim.compareSnapshotsAndReject('.', `${m.prefix.toLowerCase()}-show_address_reject`)
-      } finally {
-      }
+      await sim.compareSnapshotsAndReject('.', `${m.prefix.toLowerCase()}-show_address_reject`)
+
     } finally {
       await sim.close()
     }
