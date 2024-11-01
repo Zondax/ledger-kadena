@@ -42,16 +42,13 @@ test.concurrent.each(models)('get app version', async function (m) {
   try {
     await sim.start({ ...defaultOptions, model: m.name })
     const app = new Kda(sim.getTransport())
-    try {
-      const resp = await app.getVersion()
-      console.log(resp)
 
-      expect(resp).toHaveProperty('major')
-      expect(resp).toHaveProperty('minor')
-      expect(resp).toHaveProperty('patch')
-    } catch {
-      console.log('getVersion error')
-    }
+    const resp = await app.getVersion()
+    console.log(resp)
+
+    expect(resp).toHaveProperty('major')
+    expect(resp).toHaveProperty('minor')
+    expect(resp).toHaveProperty('patch')
   } finally {
     await sim.close()
   }
@@ -63,16 +60,12 @@ test.concurrent.each(models)('get address', async function (m) {
     await sim.start({ ...defaultOptions, model: m.name })
     const app = new Kda(sim.getTransport())
 
-    try {
-      const responseAddr = await app.getPublicKey(PATH)
-      const pubKey = responseAddr.publicKey
-      console.log(pubKey)
+    const responseAddr = await app.getPublicKey(PATH)
+    const pubKey = responseAddr.publicKey
+    console.log(pubKey)
 
-      // The address is not checked because the public key is used as an address in the app
-      expect(Buffer.from(pubKey).toString('hex')).toEqual(expected_pk)
-    } catch {
-      throw new Error('legacy getAddress error')
-    }
+    // The address is not checked because the public key is used as an address in the app
+    expect(Buffer.from(pubKey).toString('hex')).toEqual(expected_pk)
   } finally {
     await sim.close()
   }
@@ -122,10 +115,8 @@ test.concurrent.each(models)('legacy show address - reject', async function (m) 
 
     // Wait until we are not in the main menu
     await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-    try {
-      await sim.compareSnapshotsAndReject('.', `${m.prefix.toLowerCase()}-show_address_reject_legacy`)
-    } finally {
-    }
+    await sim.compareSnapshotsAndReject('.', `${m.prefix.toLowerCase()}-show_address_reject_legacy`)
+
   } finally {
     await sim.close()
   }
