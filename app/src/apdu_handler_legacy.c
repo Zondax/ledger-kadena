@@ -288,6 +288,7 @@ bool legacy_process_transfer_chunk(uint32_t rx) {
             if (items != LEGACY_TRANSFER_NUM_ITEMS) {
                 THROW(APDU_CODE_DATA_INVALID);
             }
+            tx_initialized = false;
             return true;
         }
     }
