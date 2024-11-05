@@ -262,6 +262,7 @@ bool legacy_process_transfer_chunk(uint32_t rx) {
         offset += payload_size + 1;
 
         if (offset > rx) {
+            tx_initialized = false;
             THROW(APDU_CODE_DATA_INVALID);
         }
 
@@ -281,10 +282,12 @@ bool legacy_process_transfer_chunk(uint32_t rx) {
         legacy_append_data(&G_io_apdu_buffer[offset], payload_size + 1);
 
         if (++items > LEGACY_TRANSFER_NUM_ITEMS) {
+            tx_initialized = false;
             THROW(APDU_CODE_DATA_INVALID);
         }
 
         if (next_offset >= rx && next_offset != LEGACY_FULL_CHUNK_SIZE) {
+            tx_initialized = false;
             if (items != LEGACY_TRANSFER_NUM_ITEMS) {
                 THROW(APDU_CODE_DATA_INVALID);
             }
