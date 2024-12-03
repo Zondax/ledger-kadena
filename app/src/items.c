@@ -34,7 +34,6 @@ static items_error_t items_storeNetwork();
 static items_error_t items_storeRequiringCapabilities();
 static items_error_t items_storeKey();
 static items_error_t items_validateSigners();
-static items_error_t items_storePayingGas();
 static items_error_t items_storeAllTransfers();
 static items_error_t items_storeCaution();
 static items_error_t items_storeHashWarning();
@@ -83,8 +82,6 @@ items_error_t items_storeItems(tx_type_t tx_type) {
         CHECK_ITEMS_ERROR(items_storeKey());
 
         CHECK_ITEMS_ERROR(items_validateSigners());
-
-        CHECK_ITEMS_ERROR(items_storePayingGas());
 
         CHECK_ITEMS_ERROR(items_storeAllTransfers());
 
@@ -200,45 +197,6 @@ static items_error_t items_validateSigners() {
         }
     }
     // No transfer found
-    *curr_token_idx = 0;
-    return items_ok;
-}
-
-static items_error_t items_storePayingGas() {
-    parsed_json_t *json_all = &(parser_getParserJsonObj()->json);
-    uint16_t *curr_token_idx = &item_array.items[item_array.numOfItems].json_token_index;
-    uint16_t token_index = 0;
-    uint16_t name_token_index = 0;
-    jsmntok_t *token;
-
-    PARSER_TO_ITEMS_ERROR(object_get_value(json_all, *curr_token_idx, JSON_SIGNERS, curr_token_idx));
-
-    if (!items_isNullField(*curr_token_idx)) {
-        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, 0, curr_token_idx));
-
-        if (object_get_value(json_all, *curr_token_idx, JSON_CLIST, curr_token_idx) == parser_no_data) {
-            return items_ok;
-        }
-
-        if (!items_isNullField(*curr_token_idx)) {
-            uint16_t clist_element_count = 0;
-            PARSER_TO_ITEMS_ERROR(array_get_element_count(json_all, *curr_token_idx, &clist_element_count));
-
-            for (uint16_t i = 0; i < (uint8_t)clist_element_count; i++) {
-                PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, *curr_token_idx, i, &token_index));
-
-                PARSER_TO_ITEMS_ERROR(object_get_value(json_all, token_index, JSON_NAME, &name_token_index));
-                token = &(json_all->tokens[name_token_index]);
-
-                if (MEMCMP("coin.GAS", json_all->buffer + token->start, token->end - token->start) == 0) {
-                    *curr_token_idx = token_index;
-                    items_storeGasItem(*curr_token_idx);
-                    return items_ok;
-                }
-            }
-        }
-    }
-
     *curr_token_idx = 0;
     return items_ok;
 }
@@ -446,6 +404,21 @@ static items_error_t items_storeTxItem(uint16_t transfer_token_index, uint8_t *n
         (*num_of_transfers)++;
         item_array.toString[item_array.numOfItems] = items_transferToDisplayString;
         INCREMENT_NUM_ITEMS()
+        item = &item_array.items[item_array.numOfItems];
+        item->key = key_from;
+        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, 0, &item->json_token_index));
+        item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
+        INCREMENT_NUM_ITEMS()
+        item = &item_array.items[item_array.numOfItems];
+        item->key = key_to;
+        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, 1, &item->json_token_index));
+        item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
+        INCREMENT_NUM_ITEMS()
+        item = &item_array.items[item_array.numOfItems];
+        item->key = key_amount;
+        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, 2, &item->json_token_index));
+        item_array.toString[item_array.numOfItems] = items_amountToDisplayString;
+        INCREMENT_NUM_ITEMS()
     } else {
         items_storeUnknownItem(num_of_args, token_index);
     }
@@ -467,6 +440,26 @@ static items_error_t items_storeTxCrossItem(uint16_t transfer_token_index, uint8
         item->key = key_transfer;
         (*num_of_transfers)++;
         item_array.toString[item_array.numOfItems] = items_crossTransferToDisplayString;
+        INCREMENT_NUM_ITEMS()
+        item = &item_array.items[item_array.numOfItems];
+        item->key = key_from;
+        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, 0, &item->json_token_index));
+        item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
+        INCREMENT_NUM_ITEMS()
+        item = &item_array.items[item_array.numOfItems];
+        item->key = key_to;
+        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, 1, &item->json_token_index));
+        item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
+        INCREMENT_NUM_ITEMS()
+        item = &item_array.items[item_array.numOfItems];
+        item->key = key_amount;
+        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, 2, &item->json_token_index));
+        item_array.toString[item_array.numOfItems] = items_amountToDisplayString;
+        INCREMENT_NUM_ITEMS()
+        item = &item_array.items[item_array.numOfItems];
+        item->key = key_to_chain;
+        PARSER_TO_ITEMS_ERROR(array_get_nth_element(json_all, token_index, 3, &item->json_token_index));
+        item_array.toString[item_array.numOfItems] = items_stdToDisplayString;
         INCREMENT_NUM_ITEMS()
     } else {
         items_storeUnknownItem(num_of_args, token_index);
