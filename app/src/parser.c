@@ -192,6 +192,18 @@ static parser_error_t parser_getItemKey(uint8_t displayIdx, char *outKey, uint16
         case key_paying_gas:
             strncpy(outKey, "Paying Gas", outKeyLen);
             break;
+        case key_from:
+            strncpy(outKey, "From", outKeyLen);
+            break;
+        case key_to:
+            strncpy(outKey, "To", outKeyLen);
+            break;
+        case key_amount:
+            strncpy(outKey, "Amount", outKeyLen);
+            break;
+        case key_to_chain:
+            strncpy(outKey, "To Chain", outKeyLen);
+            break;
         case key_transfer:
             if (update_counts) {
                 transfer_count++;

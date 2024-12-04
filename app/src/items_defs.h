@@ -19,7 +19,7 @@
 
 #include "zxtypes.h"
 
-#define MAX_NUMBER_OF_ITEMS 25
+#define MAX_NUMBER_OF_ITEMS 65
 
 #define CHECK_ITEMS_ERROR(__CALL)            \
     {                                        \
@@ -55,6 +55,10 @@ typedef enum {
     key_chain_id,
     key_paying_gas,
     key_transfer,
+    key_from,
+    key_to,
+    key_amount,
+    key_to_chain,
     key_rotate,
     key_unknown_capability,
     key_transaction_hash,
