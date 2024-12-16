@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@zondax/ledger-kadena": "^0.0.3",
-    "@zondax/zemu": "^0.52.0",
+    "@zondax/zemu": "^0.53.0",
     "hw-app-kda": "^0.0.0"
   },
   "devDependencies": {
