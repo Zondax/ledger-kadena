@@ -18,6 +18,7 @@
 
 #include <base64.h>
 
+#include "app_mode.h"
 #include "crypto_helper.h"
 #include "items_format.h"
 #include "parser_impl.h"
@@ -99,9 +100,11 @@ items_error_t items_storeItems(tx_type_t tx_type) {
 
     CHECK_ITEMS_ERROR(items_computeHash(tx_type));
 
-    CHECK_ITEMS_ERROR(items_storeHash());
+    if (app_mode_expert()) {
+        CHECK_ITEMS_ERROR(items_storeHash());
 
-    CHECK_ITEMS_ERROR(items_storeSignForAddr());
+        CHECK_ITEMS_ERROR(items_storeSignForAddr());
+    }
 
     return items_ok;
 }
