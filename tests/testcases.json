@@ -17,8 +17,6 @@
       "7 | Amount : KDA 11",
       "8 | On Chain : 0",
       "9 | Using Gas : at most 600 at price 1.0e-5",
-      "10 | Transaction hash [1/2] : fPSCfMUaoK1N31qwhwBFUPwG-YR_guPP894uix",
-      "10 | Transaction hash [2/2] : sNZgk"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -56,8 +54,6 @@
       "7 | Amount : KDA 2",
       "8 | On Chain : 0",
       "9 | Using Gas : at most 600 at price 1.0e-6",
-      "10 | Transaction hash [1/2] : anrl4cUVN53NFJCQ9tH4szt-ZzlCQ_SZuDI7e8",
-      "10 | Transaction hash [2/2] : OLyco"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -93,9 +89,7 @@
       "5 | To [2/2] : 566819ec48e0e8c54dae6ebb42",
       "6 | Amount : KDA 11",
       "7 | On Chain : 0",
-      "8 | Using Gas : at most 600 at price 1.0e-5",
-      "9 | Transaction hash [1/2] : epv3lSVeZCWEYpPZet-ddYqpFSekJiIcw2azMb",
-      "9 | Transaction hash [2/2] : -Cn8w"
+      "8 | Using Gas : at most 600 at price 1.0e-5"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -131,9 +125,7 @@
       "6 | To [2/2] : e0cfdce494243a61b8ea572dfd",
       "7 | Amount : KDA {\"decimal\":\"123456789.0123456789\"}",
       "8 | On Chain : 0",
-      "9 | Using Gas : at most 600 at price 1.0e-6",
-      "10 | Transaction hash [1/2] : u4kRsc0DEmRbOOG2gePtMADMTOGGtRsXrMQ2R4",
-      "10 | Transaction hash [2/2] : bAvk4"
+      "9 | Using Gas : at most 600 at price 1.0e-6"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -170,9 +162,7 @@
       "6 | To [2/2] : ca33c4a0e04bc099a7044a90f7",
       "7 | Amount : KDA 4.98340488",
       "8 | On Chain : 0",
-      "9 | Using Gas : at most 60000 at price 1.0e-6",
-      "10 | Transaction hash [1/2] : SrjHkjfzLHLiOS-5_lcZvLOhiU42NynfAfezMz",
-      "10 | Transaction hash [2/2] : beXsw"
+      "9 | Using Gas : at most 60000 at price 1.0e-6"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -209,9 +199,7 @@
       "6 | To [2/2] : ca33c4a0e04bc099a7044a90f7",
       "7 | Amount : KDA 4.89093455",
       "8 | On Chain : 0",
-      "9 | Using Gas : at most 60000 at price 1.0e-6",
-      "10 | Transaction hash [1/2] : pJsk0-vgbqfzOBFc4zHtFMSMa0aCZpXBZ_QQFx",
-      "10 | Transaction hash [2/2] : ox1-k"
+      "9 | Using Gas : at most 60000 at price 1.0e-6"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -247,9 +235,7 @@
       "4 | Unknown Capability 1 [4/5] : 9a26114e1a42d92598b3f632551c566819ec48",
       "4 | Unknown Capability 1 [5/5] : e0e8c54dae6ebb42\"",
       "5 | On Chain : 0",
-      "6 | Using Gas : at most 600 at price 1.0e-5",
-      "7 | Transaction hash [1/2] : FmmZBoFdyW_0T7oD1fXldK_MgKyvxTd4B3i7ew",
-      "7 | Transaction hash [2/2] : 7VnMY"
+      "6 | Using Gas : at most 600 at price 1.0e-5"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -281,9 +267,7 @@
       "4 | Rotate for account [1/2] : \"d3300d284f4bcfbc91555184ef026a356e57f",
       "4 | Rotate for account [2/2] : f0fa97b5e6c9830750892cd3093\"",
       "5 | On Chain : 0",
-      "6 | Using Gas : at most 1500 at price 1.0e-5",
-      "7 | Transaction hash [1/2] : WQImvdxCaI7U5Qy2U_3Mxoa3i-Lp-PyNu9aZNt",
-      "7 | Transaction hash [2/2] : XclHo"
+      "6 | Using Gas : at most 1500 at price 1.0e-5"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -313,9 +297,7 @@
       "4 | Unknown Capability 1 [2/3] : bcfbc91555184ef026a356e57ff0fa97b5e6c9",
       "4 | Unknown Capability 1 [3/3] : 830750892cd3093\", arg 2: null",
       "5 | On Chain : 0",
-      "6 | Using Gas : at most 1500 at price 1.0e-5",
-      "7 | Transaction hash [1/2] : Rr78KvlVRiX59dDOqZFaK9vgW6GzgMss13p67y",
-      "7 | Transaction hash [2/2] : GOkN4"
+      "6 | Using Gas : at most 1500 at price 1.0e-5"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -352,8 +334,6 @@
       "5 | WARNING [6/6] : s of all funds.",
       "6 | On Chain : 1",
       "7 | Using Gas : at most 600 at price 0.00001",
-      "8 | Transaction hash [1/2] : EsF-vcYfXYn8-NpYIvBcOMYCfUxiV6wxECU5FW",
-      "8 | Transaction hash [2/2] : NFz5g"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -395,8 +375,6 @@
       "5 | WARNING [6/6] : s of all funds.",
       "6 | On Chain : 1",
       "7 | Using Gas : at most 600 at price 0.00001",
-      "8 | Transaction hash [1/2] : 0j8JyVmew5_ibulW2WO-OXb9j5woNPX1T9Y1BQ",
-      "8 | Transaction hash [2/2] : QvmFM"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -436,8 +414,6 @@
       "7 | Amount : KDA 2",
       "8 | On Chain : 1",
       "9 | Using Gas : at most 600 at price 0.00001",
-      "10 | Transaction hash [1/2] : 9VlNQ6wmY5UpfOcazQNGpBZDt9Cd_sl_DO0POp",
-      "10 | Transaction hash [2/2] : iBDvU"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -476,8 +452,6 @@
       "8 | To Chain : 0",
       "9 | On Chain : 1",
       "10 | Using Gas : at most 600 at price 0.00001",
-      "11 | Transaction hash [1/2] : nw3YtHZ5EgogG2oQ9JbOOEqyhy7IN4cevGjdEK",
-      "11 | Transaction hash [2/2] : uWgQM"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -517,8 +491,6 @@
       "8 | To Chain : 0",
       "9 | On Chain : 1",
       "10 | Using Gas : at most 600 at price 0.00001",
-      "11 | Transaction hash [1/2] : gaYu1-LR6N9V0bUt1u_N9p4cbm_dwy7IeHC52r",
-      "11 | Transaction hash [2/2] : D92gs"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -558,8 +530,6 @@
       "4 | Unknown Capability 1 [7/7] :  4: \"0\", arg 5: true",
       "5 | On Chain : 1",
       "6 | Using Gas : at most 600 at price 0.00001",
-      "7 | Transaction hash [1/2] : LY8HM_kQ2nRO7Wl0PD9flhbibi0K1CXxv27Kml",
-      "7 | Transaction hash [2/2] : DBQmo"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -616,8 +586,6 @@
       "19 | Amount : KDA 4",
       "20 | On Chain : 0",
       "21 | Using Gas : at most 600 at price 1.0e-6",
-      "22 | Transaction hash [1/2] : cYmajadc0EPG3ifvKR1Yd_-wlG79UZirK47JOR",
-      "22 | Transaction hash [2/2] : EfZhk"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -693,8 +661,6 @@
       "21 | Amount : KDA 4",
       "22 | On Chain : 0",
       "23 | Using Gas : at most 600 at price 1.0e-6",
-      "24 | Transaction hash [1/2] : AoXqSSMScM_u4glsmLV3C8Eawexbm2YEFgFMHY",
-      "24 | Transaction hash [2/2] : Fzm4o"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -752,8 +718,6 @@
       "7 | Amount : KDA 11",
       "8 | CAUTION [1/2] : 'meta' field of transaction not recogn",
       "8 | CAUTION [2/2] : ized",
-      "9 | Transaction hash [1/2] : fysHQicr1iPz-sbSntIM3Rx_Iw_agBhRxt-XL9",
-      "9 | Transaction hash [2/2] : X7ENk"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -786,8 +750,6 @@
       "4 | Unknown Capability 1 : name: mycoin.MY_TRANSFER, no args",
       "5 | On Chain : 0",
       "6 | Using Gas : at most 600 at price 1.0e-5",
-      "7 | Transaction hash [1/2] : hnaoFEVgtSMrwKbm2Ui4wnARtUwMo6rtB3fnvZ",
-      "7 | Transaction hash [2/2] : Gb8oE"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -817,8 +779,6 @@
       "4 | Unknown Capability 1 [3/3] : 6f1b5ff837d9b30c471790\"",
       "5 | On Chain : 0",
       "6 | Using Gas : at most 600 at price 1.0e-5",
-      "7 | Transaction hash [1/2] : kQqVYwYzDNSKqcRwJ3Yd4xgG2UW9j2sdcupQx-",
-      "7 | Transaction hash [2/2] : T6XEY"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -851,8 +811,6 @@
       "4 | Unknown Capability 1 [4/4] : d arg\"",
       "5 | On Chain : 0",
       "6 | Using Gas : at most 600 at price 1.0e-5",
-      "7 | Transaction hash [1/2] : ONXn9kz2V9InGB-RddO3kUCy-GHQOEs8jRYqO2",
-      "7 | Transaction hash [2/2] : vzxuY"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -886,8 +844,6 @@
       "4 | Unknown Capability 1 [4/4] : d arg\", arg 3: 22.2",
       "5 | On Chain : 0",
       "6 | Using Gas : at most 600 at price 1.0e-5",
-      "7 | Transaction hash [1/2] : OEV1W2Adz7vvU3qYzV9V48pDhxRdFDi2KG4JXx",
-      "7 | Transaction hash [2/2] : 73WTA"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -923,8 +879,6 @@
       "4 | Unknown Capability 1 [6/6] : rg 5: null",
       "5 | On Chain : 0",
       "6 | Using Gas : at most 600 at price 1.0e-5",
-      "7 | Transaction hash [1/2] : 5RygRqoczKtecEebMtaPLrulHa5aprNcjkRhMA",
-      "7 | Transaction hash [2/2] : AogNc"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -972,8 +926,6 @@
       "8 | Unknown Capability 5 [4/4] : nd arg\", arg 3: 5000, arg 4: 22.2",
       "9 | On Chain : 0",
       "10 | Using Gas : at most 600 at price 1.0e-5",
-      "11 | Transaction hash [1/2] : QJDO0ks635Xpnq2GC85cqoQUxLgESujMgun7NU",
-      "11 | Transaction hash [2/2] : grf5E"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -1038,8 +990,6 @@
       "15 | Unknown Capability 3 [6/6] : arg 4: \"0\"",
       "16 | On Chain : 0",
       "17 | Using Gas : at most 600 at price 1.0e-5",
-      "18 | Transaction hash [1/2] : yMXcVG1vcnLrbtdiKHI1MAYgrBgoDqr15YSRID",
-      "18 | Transaction hash [2/2] : 70DyU"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
@@ -1093,8 +1043,6 @@
       "7 | WARNING [1/3] : Transaction too large for Ledger to di",
       "7 | WARNING [2/3] : splay.  PROCEED WITH GREAT CAUTION.  D",
       "7 | WARNING [3/3] : o you want to continue?",
-      "8 | Transaction hash [1/2] : Y2q38WX4sd5fWzw2knr7mfAltsaYxhWnDGtFaZ",
-      "8 | Transaction hash [2/2] : 7NV40"
     ],
     "output_expert": [
       "0 | Signing : Transaction",
