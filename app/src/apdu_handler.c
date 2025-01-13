@@ -24,6 +24,7 @@
 #include "addr.h"
 #include "apdu_handler_legacy.h"
 #include "app_main.h"
+#include "app_mode.h"
 #include "coin.h"
 #include "crypto.h"
 #include "parser_txdef.h"
@@ -125,6 +126,9 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
     if (!process_chunk(tx, rx)) {
         THROW(APDU_CODE_OK);
     }
+    
+    // Reset BLS UI for next transaction
+    app_mode_skip_blindsign_ui();
 
     uint8_t error_code;
     const char *error_msg = tx_parse(tx_get_buffer_length(), get_tx_type(), &error_code);
