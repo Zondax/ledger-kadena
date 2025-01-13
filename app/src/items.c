@@ -96,6 +96,8 @@ items_error_t items_storeItems(tx_type_t tx_type) {
         CHECK_ITEMS_ERROR(items_checkTxLengths());
     } else {
         CHECK_ITEMS_ERROR(items_storeHashWarning());
+
+        CHECK_ITEMS_ERROR(items_storeHash());
     }
 
     CHECK_ITEMS_ERROR(items_computeHash(tx_type));
