@@ -126,7 +126,7 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
     if (!process_chunk(tx, rx)) {
         THROW(APDU_CODE_OK);
     }
-    
+
     // Reset BLS UI for next transaction
     app_mode_skip_blindsign_ui();
 
