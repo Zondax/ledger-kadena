@@ -18,8 +18,8 @@
 
 #include <zxformat.h>
 
-#include "crypto.h"
 #include "common/parser.h"
+#include "crypto.h"
 
 extern char base64_hash[45];
 
