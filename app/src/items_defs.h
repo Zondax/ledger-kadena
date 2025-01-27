@@ -19,7 +19,11 @@
 
 #include "zxtypes.h"
 
-#define MAX_NUMBER_OF_ITEMS 65
+#if defined(TARGET_NANOS)
+#define MAX_NUMBER_OF_ITEMS 57
+#else
+#define MAX_NUMBER_OF_ITEMS 100
+#endif
 
 #define CHECK_ITEMS_ERROR(__CALL)            \
     {                                        \
