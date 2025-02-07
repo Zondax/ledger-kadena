@@ -299,9 +299,9 @@ bool legacy_process_transfer_chunk(uint32_t rx) {
 }
 
 void legacy_handleGetVersion(volatile uint32_t *tx) {
-    G_io_apdu_buffer[0] = (LEDGER_MAJOR_VERSION >> 0) & 0xFF;
-    G_io_apdu_buffer[1] = (LEDGER_MINOR_VERSION >> 0) & 0xFF;
-    G_io_apdu_buffer[2] = (LEDGER_PATCH_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[0] = (MAJOR_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[1] = (MINOR_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[2] = (PATCH_VERSION >> 0) & 0xFF;
 
     *tx += 3;
     THROW(APDU_CODE_OK);
