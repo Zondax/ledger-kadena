@@ -18,6 +18,7 @@
 
 #include "actions.h"
 #include "addr.h"
+#include "app_mode.h"
 #include "view_internal.h"
 
 static bool tx_initialized = false;

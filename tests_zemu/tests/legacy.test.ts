@@ -230,8 +230,8 @@ describe.each(HASH_TEST_CASES)('Hash transactions BLS off', function (data) {
       
       // Verify the error, anything other than 0x6984 is not expected
       expect(result).toMatchObject({
-        returnCode: 0x6984,
-        message: expect.stringContaining("Data is invalid")
+        statusCode: 0x6984,
+        statusText: 'UNKNOWN_ERROR'
       });
     } finally {
       await sim.close()
