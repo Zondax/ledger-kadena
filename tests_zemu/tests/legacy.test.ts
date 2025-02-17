@@ -196,6 +196,49 @@ describe.each(HASH_TEST_CASES)('Hash transactions', function (data) {
   })
 })
 
+describe.each(HASH_TEST_CASES)('Hash transactions BLS off', function (data) {
+  test.concurrent.each(models)('sign hash', async function (m) {
+    if (!isTouchDevice(m.name)) {
+      return
+    }
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start({ ...defaultOptions, model: m.name })
+      const app = new Kda(sim.getTransport())
+
+      const { publicKey } = await app.getPublicKey(data.path)
+
+      const req = app.signHash(data.path, data.hash).catch(error => {
+        // Store the error to verify later, we are expecting signHash to fail
+        return error;
+      });
+
+      // Wait until we are not in the main menu
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+
+      // Confirm "Go to settings" and toggle Blind Signing
+      const nav = new TouchNavigation(m.name, [
+        ButtonKind.ConfirmYesButton,
+        ButtonKind.ToggleSettingButton2,
+        ButtonKind.SettingsNavRightButton,
+        ButtonKind.SettingsNavRightButton,
+        ButtonKind.SettingsQuitButton,
+      ]);
+      await sim.navigateAndCompareSnapshots('.', `${m.prefix.toLowerCase()}-clear_sign_${data.name}_legacy`, nav.schedule)
+
+      const result = await req;
+      
+      // Verify the error, anything other than 0x6984 is not expected
+      expect(result).toMatchObject({
+        returnCode: 0x6984,
+        message: expect.stringContaining("Data is invalid")
+      });
+    } finally {
+      await sim.close()
+    }
+  })
+})
+
 describe.each(TRANSACTIONS_TEST_CASES)('Tx transfer', function (data) {
   test.concurrent.each(models)('sign transfer tx', async function (m) {
     const sim = new Zemu(m.path)
