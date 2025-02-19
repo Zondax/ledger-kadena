@@ -18,6 +18,7 @@
 
 #include "actions.h"
 #include "addr.h"
+#include "app_mode.h"
 #include "view_internal.h"
 
 static bool tx_initialized = false;
@@ -340,6 +341,9 @@ void legacy_handleSignTransaction(volatile uint32_t *flags, volatile uint32_t *t
 
     uint32_t buffer_length = legacy_check_request(tx);
 
+    // Reset BLS UI for next transaction
+    app_mode_skip_blindsign_ui();
+
     const char *error_msg = tx_parse(buffer_length, tx_type_json, NULL);
     tx_type = tx_type_json;
     CHECK_APP_CANARY()
@@ -395,6 +399,9 @@ void legacy_handleSignTransferTx(volatile uint32_t *flags, volatile uint32_t *tx
     }
 
     uint32_t buffer_length = tx_get_buffer_length();
+
+    // Reset BLS UI for next transaction
+    app_mode_skip_blindsign_ui();
 
     const char *error_msg = tx_parse(buffer_length, tx_type_transfer, NULL);
     tx_type = tx_type_transfer;
