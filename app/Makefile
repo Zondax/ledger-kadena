@@ -78,6 +78,7 @@ APP_LOAD_PARAMS =  --curve ed25519 --delete $(COMMON_LOAD_PARAMS) --path $(APPPA
 # BLAKE3_DIR := $(CURDIR)/../deps/BLAKE3-c
 # INCLUDES_PATH += $(BLAKE3_DIR)
 # APP_SOURCE_FILES += $(BLAKE3_DIR)/blake3.c $(BLAKE3_DIR)/blake3_dispatch.c $(BLAKE3_DIR)/blake3_portable.c
+ENABLE_BLUETOOTH = 1
 
 include $(BOLOS_SDK)/Makefile.target
 
