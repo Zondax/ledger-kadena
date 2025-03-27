@@ -77,13 +77,6 @@ VARIANT_VALUES=$(COIN)
 
 INCLUDES_PATH += $(CURDIR)/src/common
 
-# Flag to compile all Penumbra actions
-FULL_APP ?= 0
-ifeq ($(FULL_APP),1)
-DEFINES += FULL_APP
-$(info ************ FULL APP ENABLED ************)
-endif
-
 ########################################
 # Application communication interfaces #
 ########################################
