@@ -25,7 +25,7 @@
     "upgrade": "bunx npm-check-updates -i"
   },
   "dependencies": {
-    "@zondax/ledger-kadena": "^0.0.3",
+    "@zondax/ledger-kadena": "^0.0.4",
     "@zondax/zemu": "^0.62.1",
     "hw-app-kda": "^0.0.0"
   },
