@@ -15,11 +15,11 @@
  ********************************************************************************/
 
 #include <hexutils.h>
-#include <nlohmann/json.hpp>
 #include <parser_txdef.h>
 
 #include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 #include "app_mode.h"
 #include "gmock/gmock.h"
@@ -66,7 +66,7 @@ std::vector<testcase_t> GetJsonTestCases(std::string jsonFile) {
     json obj;
     try {
         inFile >> obj;
-    } catch (const json::exception& e) {
+    } catch (const json::exception &e) {
         std::cerr << "JSON parsing error: " << e.what() << std::endl;
         return answer;
     }
@@ -75,17 +75,17 @@ std::vector<testcase_t> GetJsonTestCases(std::string jsonFile) {
 
     for (size_t i = 0; i < obj.size(); i++) {
         auto outputs = std::vector<std::string>();
-        for (const auto& s : obj[i]["output"]) {
+        for (const auto &s : obj[i]["output"]) {
             outputs.push_back(s.get<std::string>());
         }
 
         auto outputs_expert = std::vector<std::string>();
-        for (const auto& s : obj[i]["output_expert"]) {
+        for (const auto &s : obj[i]["output_expert"]) {
             outputs_expert.push_back(s.get<std::string>());
         }
 
-        answer.push_back(testcase_t{obj[i]["index"].get<uint64_t>(), obj[i]["name"].get<std::string>(), obj[i]["blob"].get<std::string>(),
-                                    outputs, outputs_expert});
+        answer.push_back(testcase_t{obj[i]["index"].get<uint64_t>(), obj[i]["name"].get<std::string>(),
+                                    obj[i]["blob"].get<std::string>(), outputs, outputs_expert});
     }
 
     return answer;
