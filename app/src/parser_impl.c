@@ -211,11 +211,14 @@ parser_error_t parser_getTxName(uint16_t token_index) {
 
         if (CMP_STRING_AND_BUFFER("coin.TRANSFER", json_all->buffer + token->start, len)) {
             return parser_name_tx_transfer;
-        } else if (CMP_STRING_AND_BUFFER("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len)) {
+        }
+        if (CMP_STRING_AND_BUFFER("coin.TRANSFER_XCHAIN", json_all->buffer + token->start, len)) {
             return parser_name_tx_transfer_xchain;
-        } else if (CMP_STRING_AND_BUFFER("coin.ROTATE", json_all->buffer + token->start, len)) {
+        }
+        if (CMP_STRING_AND_BUFFER("coin.ROTATE", json_all->buffer + token->start, len)) {
             return parser_name_rotate;
-        } else if (CMP_STRING_AND_BUFFER("coin.GAS", json_all->buffer + token->start, len)) {
+        }
+        if (CMP_STRING_AND_BUFFER("coin.GAS", json_all->buffer + token->start, len)) {
             return parser_name_gas;
         }
     }
@@ -321,7 +324,7 @@ static parser_error_t parser_formatTxTransfer(uint16_t address_len, char *addres
         return parser_unexpected_value;
     }
 
-    char namespace_and_module[50] = {0};
+    char namespace_and_module[NAMESPACE_LEN + MODULE_LEN + 1] = {0};
     if (chunks[NAMESPACE_POS].len > 0 && chunks[MODULE_POS].len > 0) {
         snprintf(namespace_and_module, sizeof(namespace_and_module), "%.*s.%.*s", chunks[NAMESPACE_POS].len,
                  chunks[NAMESPACE_POS].data, chunks[MODULE_POS].len, chunks[MODULE_POS].data);
