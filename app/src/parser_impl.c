@@ -270,7 +270,7 @@ parser_error_t parser_createJsonTemplate(parser_context_t *ctx) {
 
     CHECK_ERROR(parser_validate_chunks(chunks));
 
-#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX) || defined(TARGET_FLEX)
+#if defined(LEDGER_SPECIFIC)
     uint8_t pubkey[PUB_KEY_LENGTH] = {0};
     uint16_t pubkey_len = 0;
 
