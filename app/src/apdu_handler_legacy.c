@@ -380,7 +380,8 @@ void legacy_handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, uint
             *tx = 0;
             THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
         }
-        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        MEMZERO(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+        MEMCPY(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
         if (error_code == parser_blindsign_mode_required) {
             G_error_message_offset = error_msg_length;

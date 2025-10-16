@@ -55,7 +55,7 @@ void extractHDPath(uint32_t rx, uint32_t offset) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
 
-    memcpy(hdPath, G_io_apdu_buffer + offset, sizeof(uint32_t) * HDPATH_LEN_DEFAULT);
+    MEMCPY(hdPath, G_io_apdu_buffer + offset, sizeof(uint32_t) * HDPATH_LEN_DEFAULT);
 
     const bool mainnet = hdPath[0] == HDPATH_0_DEFAULT && hdPath[1] == HDPATH_1_DEFAULT;
 
@@ -146,7 +146,8 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
             *tx = 0;
             THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
         }
-        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        MEMZERO(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+        MEMCPY(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
         if (error_code == parser_blindsign_mode_required) {
             G_error_message_offset = error_msg_length;
