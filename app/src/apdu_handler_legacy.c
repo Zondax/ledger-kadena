@@ -375,9 +375,15 @@ void legacy_handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, uint
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        // Ensure we have space for error message + 2 bytes for error code
+        if (error_msg_length > (int)(sizeof(G_io_apdu_buffer) - 2)) {
+            *tx = 0;
+            THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
+        }
         memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
         if (error_code == parser_blindsign_mode_required) {
+            G_error_message_offset = error_msg_length;
             *flags |= IO_ASYNCH_REPLY;
             view_blindsign_error_show();
         }

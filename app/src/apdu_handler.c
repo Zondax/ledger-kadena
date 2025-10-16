@@ -45,6 +45,9 @@
 
 static bool tx_initialized = false;
 
+// Global variable to store error message offset for custom error display
+uint16_t G_error_message_offset = 0;
+
 void extractHDPath(uint32_t rx, uint32_t offset) {
     tx_initialized = false;
 
@@ -138,9 +141,15 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        // Ensure we have space for error message + 2 bytes for error code
+        if (error_msg_length > (int)(sizeof(G_io_apdu_buffer) - 2)) {
+            *tx = 0;
+            THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
+        }
         memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
         if (error_code == parser_blindsign_mode_required) {
+            G_error_message_offset = error_msg_length;
             *flags |= IO_ASYNCH_REPLY;
             view_blindsign_error_show();
         }
@@ -185,6 +194,9 @@ void handleTest(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) { 
 
 void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     volatile uint16_t sw = 0;
+
+    // Reset error message offset at the beginning of each command
+    G_error_message_offset = 0;
 
     BEGIN_TRY {
         TRY {
