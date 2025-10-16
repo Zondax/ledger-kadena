@@ -67,7 +67,7 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
 
-    uint32_t added;
+    uint32_t added = 0;
     switch (payloadType) {
         case P1_INIT:
             tx_initialize();
@@ -97,9 +97,12 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
             }
             tx_initialized = false;
             return true;
+        default:
+            break;
     }
 
     THROW(APDU_CODE_INVALIDP1P2);
+    return false;
 }
 
 __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
@@ -130,7 +133,7 @@ __Z_INLINE void handleSign(volatile uint32_t *flags, volatile uint32_t *tx, uint
     // Reset BLS UI for next transaction
     app_mode_skip_blindsign_ui();
 
-    uint8_t error_code;
+    uint8_t error_code = 0;
     const char *error_msg = tx_parse(tx_get_buffer_length(), get_tx_type(), &error_code);
     CHECK_APP_CANARY()
     if (error_msg != NULL) {

@@ -73,19 +73,19 @@ std::vector<testcase_t> GetJsonTestCases(std::string jsonFile) {
 
     std::cout << "Number of testcases: " << obj.size() << std::endl;
 
-    for (size_t i = 0; i < obj.size(); i++) {
+    for (const auto &test_case_json : obj) {
         auto outputs = std::vector<std::string>();
-        for (const auto &s : obj[i]["output"]) {
+        for (const auto &s : test_case_json["output"]) {
             outputs.push_back(s.get<std::string>());
         }
 
         auto outputs_expert = std::vector<std::string>();
-        for (const auto &s : obj[i]["output_expert"]) {
+        for (const auto &s : test_case_json["output_expert"]) {
             outputs_expert.push_back(s.get<std::string>());
         }
 
-        answer.push_back(testcase_t{obj[i]["index"].get<uint64_t>(), obj[i]["name"].get<std::string>(),
-                                    obj[i]["blob"].get<std::string>(), outputs, outputs_expert});
+        answer.push_back(testcase_t{test_case_json["index"].get<uint64_t>(), test_case_json["name"].get<std::string>(),
+                                    test_case_json["blob"].get<std::string>(), outputs, outputs_expert});
     }
 
     return answer;

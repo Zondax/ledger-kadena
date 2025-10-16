@@ -47,7 +47,7 @@ void legacy_app_sign() {
 }
 
 void legacy_app_sign_transference() {
-    const uint8_t *message = (uint8_t *)tx_json_get_buffer();
+    const uint8_t *message = tx_json_get_buffer();
     const uint16_t messageLength = tx_json_get_buffer_length();
 
     // get pubkey
@@ -297,6 +297,7 @@ bool legacy_process_transfer_chunk(uint32_t rx) {
     }
 
     THROW(APDU_CODE_DATA_INVALID);
+    return false;
 }
 
 void legacy_handleGetVersion(volatile uint32_t *tx) {
@@ -368,7 +369,7 @@ void legacy_handleSignHash(volatile uint32_t *flags, volatile uint32_t *tx, uint
 
     uint32_t buffer_length = legacy_check_request(tx);
 
-    uint8_t error_code;
+    uint8_t error_code = 0;
     const char *error_msg = tx_parse(buffer_length, tx_type_hash, &error_code);
     tx_type = tx_type_hash;
     CHECK_APP_CANARY()
